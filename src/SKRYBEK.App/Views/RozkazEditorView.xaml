@@ -1,0 +1,432 @@
+<UserControl x:Class="SKRYBEK.App.Views.RozkazEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SKRYBEK.App.ViewModels">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="4" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══ PANEL PERSONELU (lewy) ═══ -->
+        <Border Grid.Column="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Tytuł panelu -->
+                <TextBlock Grid.Row="0"
+                           Text="DOSTĘPNY PERSONEL"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="10,10,10,6" />
+
+                <!-- Filtry -->
+                <StackPanel Grid.Row="1" Margin="8,0,8,6">
+                    <TextBlock Text="Filtruj wg uprawnień:"
+                               Style="{StaticResource FormLabel}"
+                               Margin="0,0,0,4" />
+                    <WrapPanel>
+                        <CheckBox Content="kat. C" IsChecked="{Binding FilterKierowcaC}" Margin="0,0,8,4"
+                                  Foreground="{StaticResource ForegroundBrush}" />
+                        <CheckBox Content="kat. C+E" IsChecked="{Binding FilterKierowcaCE}" Margin="0,0,8,4"
+                                  Foreground="{StaticResource ForegroundBrush}" />
+                        <CheckBox Content="Nurek" IsChecked="{Binding FilterNurek}" Margin="0,0,8,4"
+                                  Foreground="{StaticResource ForegroundBrush}" />
+                        <CheckBox Content="KPP" IsChecked="{Binding FilterKPP}" Margin="0,0,8,4"
+                                  Foreground="{StaticResource ForegroundBrush}" />
+                    </WrapPanel>
+                    <ComboBox Style="{StaticResource DarkComboBox}"
+                              ItemsSource="{Binding DostepneFunkcje}"
+                              SelectedItem="{Binding FilterFunkcja}"
+                              Margin="0,4,0,4">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="Wyczyść filtry"
+                            Style="{StaticResource SecondaryButton}"
+                            Command="{Binding ResetujFiltrCommand}"
+                            HorizontalAlignment="Left"
+                            Padding="8,3"
+                            FontSize="11" />
+                </StackPanel>
+
+                <!-- Lista personelu -->
+                <ListBox Grid.Row="2"
+                         x:Name="PersonelList"
+                         ItemsSource="{Binding Przefiltrowane}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="2,1">
+                                <TextBlock FontWeight="SemiBold" FontSize="12"
+                                           Foreground="{StaticResource ForegroundBrush}"
+                                           Text="{Binding StopienINazwisko}" />
+                                <TextBlock FontSize="10"
+                                           Foreground="{StaticResource ForegroundMutedBrush}"
+                                           Text="{Binding Stanowisko}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- Splitter -->
+        <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
+                      Background="{StaticResource BorderBrush}" ResizeBehavior="PreviousAndNext" />
+
+        <!-- ═══ OBSZAR EDYTORA (prawy) ═══ -->
+        <ScrollViewer Grid.Column="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="0,0,4,0">
+            <StackPanel Margin="16,12,16,16">
+
+                <!-- Nagłówek rozkazu -->
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12,10"
+                        Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="ROZKAZ DZIENNY NR "
+                                       FontWeight="Bold" FontSize="16"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBox Text="{Binding NumerRozkazu, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DarkTextBox}"
+                                     Width="60" FontWeight="Bold" FontSize="16"
+                                     IsReadOnly="{Binding IsReadOnly}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock Text="/"
+                                       FontWeight="Bold" FontSize="16"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       VerticalAlignment="Center" Margin="2,0" />
+                            <TextBlock Text="{Binding Data.Year}"
+                                       FontWeight="Bold" FontSize="16"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Data, StringFormat='na dzień {0:dd.MM.yyyy}'}"
+                                       FontSize="13"
+                                       Foreground="{StaticResource ForegroundMutedBrush}" />
+                        </StackPanel>
+
+                        <!-- Przyciski akcji -->
+                        <Button Grid.Column="2"
+                                Content="💾  Zapisz"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding ZapiszCommand}"
+                                IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBoolConverter}}"
+                                Margin="0,0,8,0" />
+                        <Button Grid.Column="3"
+                                Content="📄  Eksport Word"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding EksportujDoWordCommand}" />
+                    </Grid>
+                </Border>
+
+                <!-- Status -->
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="{StaticResource AccentBrush}"
+                           FontSize="12"
+                           Margin="0,0,0,10"
+                           Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                <!-- ── 1) SŁUŻBA ────────────────────────────────────────── -->
+                <TextBlock Text="1)   SŁUŻBA"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,8"
+                        Margin="0,0,0,12">
+                    <ItemsControl ItemsSource="{Binding Sluzba}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PozycjaSluzbyViewModel}">
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="260" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding NazwaStanowiska}"
+                                               Foreground="{StaticResource ForegroundBrush}"
+                                               VerticalAlignment="Center"
+                                               FontSize="13" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="-"
+                                               Foreground="{StaticResource ForegroundMutedBrush}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="2"
+                                              Style="{StaticResource DarkComboBox}"
+                                              ItemsSource="{Binding DataContext.WszystkieOsoby,
+                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedItem="{Binding WybranaOsoba}"
+                                              IsEnabled="{Binding DataContext.IsReadOnly,
+                                                         RelativeSource={RelativeSource AncestorType=UserControl},
+                                                         Converter={StaticResource InverseBoolConverter}}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding StopienINazwisko}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- ── 2) PODZIAŁ BOJOWY ─────────────────────────────────── -->
+                <TextBlock Text="2)   PODZIAŁ BOJOWY"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,8"
+                        Margin="0,0,0,12">
+                    <ItemsControl ItemsSource="{Binding PodzialBojowy}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SamochodViewModel}">
+                                <Border Margin="6,4"
+                                        MinWidth="200"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8,6">
+                                    <StackPanel>
+                                        <!-- Nazwa pojazdu/grupy -->
+                                        <Border Background="{StaticResource AccentBrush}"
+                                                CornerRadius="3"
+                                                Padding="6,3"
+                                                Margin="0,0,0,6">
+                                            <TextBlock Text="{Binding Nazwa}"
+                                                       FontWeight="Bold"
+                                                       FontSize="12"
+                                                       Foreground="White"
+                                                       HorizontalAlignment="Center" />
+                                        </Border>
+                                        <!-- Pozycje -->
+                                        <ItemsControl ItemsSource="{Binding Pozycje}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:PozycjaSamochoduViewModel}">
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="20" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding Pozycja, StringFormat='{}{0}.'}"
+                                                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                                                   VerticalAlignment="Center"
+                                                                   FontSize="12" />
+                                                        <ComboBox Grid.Column="1"
+                                                                  Style="{StaticResource DarkComboBox}"
+                                                                  ItemsSource="{Binding DataContext.WszystkieOsoby,
+                                                                               RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                  SelectedItem="{Binding WybranaOsoba}"
+                                                                  IsEnabled="{Binding DataContext.IsReadOnly,
+                                                                             RelativeSource={RelativeSource AncestorType=UserControl},
+                                                                             Converter={StaticResource InverseBoolConverter}}"
+                                                                  FontSize="11">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding StopienINazwisko}" FontSize="11" />
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- ── DYŻURNI RATOWNICY MEDYCZNI PSP ───────────────────── -->
+                <TextBlock Text="DYŻURNI RATOWNICY MEDYCZNI PSP"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,8"
+                        Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <TextBlock Text="1.  " Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" />
+                            <TextBox Style="{StaticResource DarkTextBox}"
+                                     Text="{Binding RatownikMedyczny1, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsReadOnly}"
+                                     Width="180" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <TextBlock Text="2.  " Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" />
+                            <TextBox Style="{StaticResource DarkTextBox}"
+                                     Text="{Binding RatownikMedyczny2, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsReadOnly}"
+                                     Width="180" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ── 3) ZAJĘCIA ──────────────────────────────────────── -->
+                <TextBlock Text="3)   ZAJĘCIA"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+                <TextBox Style="{StaticResource DarkTextBox}"
+                         Text="{Binding Zajecia, UpdateSourceTrigger=PropertyChanged}"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         TextWrapping="Wrap"
+                         MinHeight="50"
+                         Margin="0,0,0,12"
+                         AcceptsReturn="True" />
+
+                <!-- ── 4) NIEOBECNI W SŁUŻBIE ───────────────────────────── -->
+                <TextBlock Text="4)   NIEOBECNI W SŁUŻBIE"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,8"
+                        Margin="0,0,0,12">
+                    <ItemsControl ItemsSource="{Binding NieobecniGrupy}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:NieobecniGroupViewModel}">
+                                <Border Margin="4" MinWidth="180"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8,6">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Tytul}"
+                                                   FontWeight="Bold"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Margin="0,0,0,4" />
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:NieobecnyViewModel}">
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0"
+                                                                 Style="{StaticResource DarkTextBox}"
+                                                                 Text="{Binding Nazwisko, UpdateSourceTrigger=PropertyChanged}"
+                                                                 IsReadOnly="{Binding DataContext.IsReadOnly,
+                                                                             RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                 FontSize="12" />
+                                                        <Button Grid.Column="1"
+                                                                Content="✕"
+                                                                Style="{StaticResource ChromeIconButton}"
+                                                                Width="22" Height="22" FontSize="10"
+                                                                IsEnabled="{Binding DataContext.IsReadOnly,
+                                                                           RelativeSource={RelativeSource AncestorType=UserControl},
+                                                                           Converter={StaticResource InverseBoolConverter}}"
+                                                                Command="{Binding DataContext.UsunNieobecnegoCommand,
+                                                                         RelativeSource={RelativeSource AncestorType=Border}}"
+                                                                CommandParameter="{Binding}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Button Content="＋ Dodaj"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Command="{Binding DodajNieobecnegoCommand}"
+                                                IsEnabled="{Binding DataContext.IsReadOnly,
+                                                           RelativeSource={RelativeSource AncestorType=UserControl},
+                                                           Converter={StaticResource InverseBoolConverter}}"
+                                                HorizontalAlignment="Left"
+                                                Padding="6,2"
+                                                FontSize="11"
+                                                Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- ── 5) UWAGI ──────────────────────────────────────────── -->
+                <TextBlock Text="5)   UWAGI"
+                           Style="{StaticResource SectionHeader}"
+                           Margin="0,0,0,6" />
+                <TextBox Style="{StaticResource DarkTextBox}"
+                         Text="{Binding Uwagi, UpdateSourceTrigger=PropertyChanged}"
+                         IsReadOnly="{Binding IsReadOnly}"
+                         TextWrapping="Wrap"
+                         MinHeight="60"
+                         Margin="0,0,0,16"
+                         AcceptsReturn="True" />
+
+                <!-- Stopka -->
+                <TextBlock Foreground="{StaticResource ForegroundMutedBrush}"
+                           FontSize="11"
+                           HorizontalAlignment="Right">
+                    <Run Text="Rozkaz podpisał D-ca JRG-" />
+                    <Run Text="{Binding NrJrg}" FontWeight="Bold" />
+                </TextBlock>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

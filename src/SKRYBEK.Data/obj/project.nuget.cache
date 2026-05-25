@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "YLZfyhugHrs=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Maciej\\source\\repos\\SKRYBEK\\src\\SKRYBEK.Data\\SKRYBEK.Data.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Maciej\\.nuget\\packages\\system.configuration.configurationmanager\\9.0.5\\system.configuration.configurationmanager.9.0.5.nupkg.sha512",
+    "C:\\Users\\Maciej\\.nuget\\packages\\system.data.oledb\\9.0.5\\system.data.oledb.9.0.5.nupkg.sha512",
+    "C:\\Users\\Maciej\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.5\\system.diagnostics.eventlog.9.0.5.nupkg.sha512",
+    "C:\\Users\\Maciej\\.nuget\\packages\\system.diagnostics.performancecounter\\9.0.5\\system.diagnostics.performancecounter.9.0.5.nupkg.sha512",
+    "C:\\Users\\Maciej\\.nuget\\packages\\system.security.cryptography.protecteddata\\9.0.5\\system.security.cryptography.protecteddata.9.0.5.nupkg.sha512"
+  ],
+  "logs": []
+}

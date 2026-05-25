@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <ApplicationIcon>Resources\skrybek.ico</ApplicationIcon>
+    <AssemblyName>SKRYBEK</AssemblyName>
+    <RootNamespace>SKRYBEK.App</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SKRYBEK.Core\SKRYBEK.Core.csproj" />
+    <ProjectReference Include="..\SKRYBEK.Data\SKRYBEK.Data.csproj" />
+    <ProjectReference Include="..\SKRYBEK.Services\SKRYBEK.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\skrybek.ico" />
+    <Resource Include="Resources\skrybek_logo.png" />
+    <Resource Include="Themes\SkrybekTheme.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Themes\kolory-ui.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Themes\kolory-rol.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

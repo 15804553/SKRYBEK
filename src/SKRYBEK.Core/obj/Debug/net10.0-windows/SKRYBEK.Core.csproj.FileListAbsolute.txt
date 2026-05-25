@@ -1,0 +1,12 @@
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\bin\Debug\net10.0-windows\SKRYBEK.Core.deps.json
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\bin\Debug\net10.0-windows\SKRYBEK.Core.dll
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\bin\Debug\net10.0-windows\SKRYBEK.Core.pdb
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.AssemblyInfoInputs.cache
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.AssemblyInfo.cs
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.csproj.CoreCompileInputs.cache
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.sourcelink.json
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.dll
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\refint\SKRYBEK.Core.dll
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\SKRYBEK.Core.pdb
+C:\Users\Maciej\source\repos\SKRYBEK\src\SKRYBEK.Core\obj\Debug\net10.0-windows\ref\SKRYBEK.Core.dll

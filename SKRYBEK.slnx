@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SKRYBEK.App/SKRYBEK.App.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/SKRYBEK.Core/SKRYBEK.Core.csproj" />
+    <Project Path="src/SKRYBEK.Data/SKRYBEK.Data.csproj" />
+    <Project Path="src/SKRYBEK.Services/SKRYBEK.Services.csproj" />
+  </Folder>
+</Solution>
