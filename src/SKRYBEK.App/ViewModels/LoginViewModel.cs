@@ -1,6 +1,8 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Services.Logging;
 
 namespace SKRYBEK.App.ViewModels;
 
@@ -8,7 +10,7 @@ public sealed partial class LoginViewModel : ObservableObject
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
-    private string _login = string.Empty;
+    private UserAccount? _wybranyUzytkownik;
 
     [ObservableProperty]
     private string _blad = string.Empty;
@@ -16,28 +18,37 @@ public sealed partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private bool _hasloWymagane = true;
+
+    public ObservableCollection<UserAccount> Uzytkownicy { get; } = [];
+
     public SessionInfo? Session { get; private set; }
     public event EventHandler<bool>? LoginCompleted;
 
-    [RelayCommand(CanExecute = nameof(CanLogin))]
-    private async Task LoginAsync(string haslo)
+    public async Task ZaladujUzytkownikowAsync()
     {
-        Blad = string.Empty;
         IsLoading = true;
+        Blad = string.Empty;
         try
         {
-            var session = await App.Services.Auth.LoginAsync(Login, haslo);
-            if (session is null)
+            SkrybekLog.Info("Ładowanie listy użytkowników z CHOMIK...");
+            var lista = await App.Services.Auth.GetAvailableUsersAsync();
+            SkrybekLog.Info($"Załadowano {lista.Count} użytkowników z CHOMIK");
+
+            Uzytkownicy.Clear();
+            foreach (var u in lista)
             {
-                Blad = "Nieprawidłowy login lub hasło.";
-                return;
+                Uzytkownicy.Add(u);
+                SkrybekLog.Info($"  Użytkownik: '{u.Login}' Rola={u.Role}");
             }
-            Session = session;
-            LoginCompleted?.Invoke(this, true);
+
+            WybranyUzytkownik = Uzytkownicy.FirstOrDefault();
         }
         catch (Exception ex)
         {
-            Blad = $"Błąd połączenia z bazą danych:\n{ex.Message}";
+            SkrybekLog.Error("Błąd ładowania użytkowników CHOMIK", ex);
+            Blad = $"Nie można załadować listy użytkowników:\n{ex.Message}";
         }
         finally
         {
@@ -45,5 +56,42 @@ public sealed partial class LoginViewModel : ObservableObject
         }
     }
 
-    private bool CanLogin() => !string.IsNullOrWhiteSpace(Login);
+    partial void OnWybranyUzytkownikChanged(UserAccount? value)
+    {
+        // PA nie wymaga hasła (brak hash w bazie CHOMIK)
+        HasloWymagane = value is not null && !string.IsNullOrEmpty(value.HasloHash);
+        Blad = string.Empty;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanLogin))]
+    private async Task LoginAsync(string haslo)
+    {
+        if (WybranyUzytkownik is null) return;
+
+        Blad = string.Empty;
+        IsLoading = true;
+        try
+        {
+            var session = await App.Services.Auth.LoginAsync(WybranyUzytkownik.Login, haslo);
+            if (session is null)
+            {
+                Blad = HasloWymagane
+                    ? "Nieprawidłowe hasło."
+                    : "Błąd logowania.";
+                return;
+            }
+            Session = session;
+            LoginCompleted?.Invoke(this, true);
+        }
+        catch (Exception ex)
+        {
+            Blad = $"Błąd połączenia z bazą:\n{ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private bool CanLogin() => WybranyUzytkownik is not null;
 }

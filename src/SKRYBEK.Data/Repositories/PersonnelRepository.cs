@@ -27,15 +27,15 @@ public sealed class PersonnelRepository
         await using var conn = _chomik.Create();
         await conn.OpenAsync();
 
-        const string sql = """
-            SELECT f.Id, f.NumerZmiany, f.StopienId, f.Imie, f.Nazwisko, f.StanowiskoId, f.Telefon, f.StazLat,
-                   ss.Nazwa AS Stopien, st.Nazwa AS Stanowisko
-            FROM Funkcjonariusze f
-            INNER JOIN StopnieSlownik ss ON ss.Id = f.StopienId
-            INNER JOIN StanowiskaSlownik st ON st.Id = f.StanowiskoId
-            WHERE f.NumerZmiany = ?
-            ORDER BY f.Nazwisko, f.Imie
-            """;
+        // Access/JET wymaga nawiasów przy wielu złączeniach — bez nawiasów silnik traktuje
+        // drugi INNER JOIN jako kontynuację warunku ON pierwszego złączenia.
+        const string sql =
+            "SELECT f.Id, f.NumerZmiany, f.StopienId, f.Imie, f.Nazwisko, f.StanowiskoId, f.Telefon, f.StazLat," +
+            " ss.Nazwa AS Stopien, st.Nazwa AS Stanowisko" +
+            " FROM (Funkcjonariusze AS f INNER JOIN StopnieSlownik AS ss ON ss.Id = f.StopienId)" +
+            " INNER JOIN StanowiskaSlownik AS st ON st.Id = f.StanowiskoId" +
+            " WHERE f.NumerZmiany = ?" +
+            " ORDER BY f.Nazwisko, f.Imie";
 
         await using var cmd = new OleDbCommand(sql, conn);
         cmd.Parameters.AddWithValue("NumerZmiany", nrZmiany);

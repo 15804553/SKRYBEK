@@ -28,12 +28,15 @@ public sealed class DatabaseBootstrapper
         if (!string.IsNullOrEmpty(dir))
             Directory.CreateDirectory(dir);
 
-        // Tworzy pustą bazę Access przez ADOX (COM)
-        var catalogType = Type.GetTypeFromProgID("ADOX.Catalog")
-            ?? throw new InvalidOperationException("ADOX.Catalog niedostępny. Zainstaluj Microsoft Access Database Engine.");
+        // Wyciąga pusty szablon .accdb z embedded resource (nie wymaga ADOX w runtime)
+        var asm = typeof(DatabaseBootstrapper).Assembly;
+        var resourceName = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("EmptyTemplate.accdb", StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException("Embedded resource EmptyTemplate.accdb nie znaleziony.");
 
-        dynamic catalog = Activator.CreateInstance(catalogType)!;
-        catalog.Create($"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={path};Jet OLEDB:Database Password=5359;");
+        using var stream = asm.GetManifestResourceStream(resourceName)!;
+        using var fs = File.Create(path);
+        stream.CopyTo(fs);
     }
 
     private async Task EnsureTablesExistAsync()

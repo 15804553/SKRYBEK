@@ -12,7 +12,7 @@ public sealed partial class NieobecnyViewModel : ObservableObject
     [ObservableProperty] private TypNieobecnosci _typNieobecnosci;
     [ObservableProperty] private Funkcjonariusz? _wybranaOsoba;
 
-    public TypNieobecnosci Typ => _typNieobecnosci;
+    public TypNieobecnosci Typ => TypNieobecnosci;
 
     public NieobecnyViewModel(NieobecnyWSluzbie model)
     {

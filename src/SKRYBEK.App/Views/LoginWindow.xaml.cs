@@ -24,12 +24,25 @@ public partial class LoginWindow : Window
                 Close();
             }
         };
-        LoginBox.Focus();
+
+        Loaded += async (_, _) =>
+        {
+            await _vm.ZaladujUzytkownikowAsync();
+            // Ustaw fokus na ComboBox lub PasswordBox po załadowaniu
+            if (_vm.HasloWymagane)
+                PasswordBox.Focus();
+            else
+                UzytkownikCombo.Focus();
+        };
     }
 
     private void Input_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && _vm.LoginCommand.CanExecute(PasswordBox.Password))
-            _vm.LoginCommand.Execute(PasswordBox.Password);
+        if (e.Key == Key.Enter)
+        {
+            var haslo = _vm.HasloWymagane ? PasswordBox.Password : string.Empty;
+            if (_vm.LoginCommand.CanExecute(haslo))
+                _vm.LoginCommand.Execute(haslo);
+        }
     }
 }

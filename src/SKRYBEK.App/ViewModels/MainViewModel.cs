@@ -1,12 +1,16 @@
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Services.Logging;
 
 namespace SKRYBEK.App.ViewModels;
 
 public sealed partial class MainViewModel : ObservableObject
 {
-    [ObservableProperty] private SessionInfo? _session;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    private SessionInfo? _session;
     [ObservableProperty] private List<RozkazDzienny> _rozkazy = [];
     [ObservableProperty] private RozkazDzienny? _wybranyRozkaz;
     [ObservableProperty] private RozkazEditorViewModel? _editorVm;
@@ -39,17 +43,36 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (Session is null) return;
 
-        var data = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
-        var nrZmiany = Session.NumerZmiany > 0 ? Session.NumerZmiany : 1;
+        IsLoading = true;
+        StatusMessage = string.Empty;
+        try
+        {
+            var data     = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+            var nrZmiany = Session.NumerZmiany > 0 ? Session.NumerZmiany : 1;
 
-        var rozkaz = await App.Services.Rozkaz.NowyRozkazAsync(data, nrZmiany);
-        var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
-        var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
-        var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
+            var rozkaz    = await App.Services.Rozkaz.NowyRozkazAsync(data, nrZmiany);
+            var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
+            var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
+            var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
 
-        EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, nrJrg, Session, isNew: true);
-        EditorVm.Saved += OnRozkazSaved;
-        WybranyRozkaz = null;
+            EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, nrJrg, Session, isNew: true);
+            EditorVm.Saved += OnRozkazSaved;
+            WybranyRozkaz = null;
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error("Błąd podczas tworzenia nowego rozkazu", ex);
+            StatusMessage = $"Błąd: {ex.Message}";
+            MessageBox.Show(
+                $"Nie można utworzyć nowego rozkazu:\n{ex.Message}",
+                "SKRYBEK — Błąd",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     [RelayCommand]
@@ -58,9 +81,10 @@ public sealed partial class MainViewModel : ObservableObject
         if (Session is null) return;
 
         IsLoading = true;
+        StatusMessage = string.Empty;
         try
         {
-            var pelny     = await App.Services.Rozkaz.GetByIdAsync(rozkaz.Id);
+            var pelny = await App.Services.Rozkaz.GetByIdAsync(rozkaz.Id);
             if (pelny is null) return;
 
             var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
@@ -71,6 +95,16 @@ public sealed partial class MainViewModel : ObservableObject
             WybranyRozkaz = pelny;
             EditorVm = new RozkazEditorViewModel(pelny, samochody, personel, nrJrg, Session, isNew: false);
             EditorVm.Saved += OnRozkazSaved;
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error($"Błąd podczas otwierania rozkazu Id={rozkaz.Id}", ex);
+            StatusMessage = $"Błąd: {ex.Message}";
+            MessageBox.Show(
+                $"Nie można otworzyć rozkazu:\n{ex.Message}",
+                "SKRYBEK — Błąd",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {

@@ -48,7 +48,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (IsAdmin)
             {
                 Uzytkownicy.Clear();
-                foreach (var u in await App.Services.AuthRepo.GetAllAsync())
+                foreach (var u in await App.Services.ChomikAuthRepo.GetAllAsync())
                     Uzytkownicy.Add(u);
             }
         }
@@ -130,52 +130,42 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     // ── Użytkownicy ───────────────────────────────────────────────────────────
+    // Użytkownicy i hasła zarządzane są wyłącznie przez CHOMIK.
 
     [RelayCommand]
-    private async Task DodajUzytkownikaAsync()
+    private Task DodajUzytkownikaAsync()
     {
-        var u = new UserAccount { Login = "nowy", Role = UserRole.Zmiana1, NumerZmiany = 1 };
-        u.HasloSol  = App.Services.Auth.GenerateSalt();
-        u.HasloHash = App.Services.Auth.HashPassword("skrybek", u.HasloSol);
-        await App.Services.AuthRepo.UpsertAsync(u);
-        await LoadAsync();
+        ShowChomikInfo();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async Task ZapiszUzytkownikaAsync(UserAccount u)
+    private Task ZapiszUzytkownikaAsync(UserAccount u)
     {
-        await App.Services.AuthRepo.UpsertAsync(u);
-        StatusMessage = $"Zapisano użytkownika: {u.Login}";
+        ShowChomikInfo();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async Task UsunUzytkownikaAsync(UserAccount u)
+    private Task UsunUzytkownikaAsync(UserAccount u)
     {
-        if (u.Id == _session.UserId)
-        {
-            MessageBox.Show("Nie możesz usunąć własnego konta.", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        var result = MessageBox.Show(
-            $"Czy usunąć użytkownika '{u.Login}'?",
-            "Potwierdź usunięcie",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (result != MessageBoxResult.Yes) return;
-        await App.Services.AuthRepo.DeleteAsync(u.Id);
-        await LoadAsync();
+        ShowChomikInfo();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async Task ZmienHasloAsync(UserAccount u)
+    private Task ZmienHasloAsync(UserAccount u)
     {
-        var dialog = new Views.ChangePasswordDialog();
-        if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.NoweHaslo))
-        {
-            await App.Services.Auth.ChangePasswordAsync(u.Id, dialog.NoweHaslo);
-            StatusMessage = $"Zmieniono hasło dla: {u.Login}";
-        }
+        ShowChomikInfo();
+        return Task.CompletedTask;
     }
+
+    private static void ShowChomikInfo() =>
+        System.Windows.MessageBox.Show(
+            "Użytkownicy i hasła zarządzane są przez aplikację CHOMIK.\nWprowadź zmiany w CHOMIK i uruchom SKRYBEK ponownie.",
+            "Zarządzanie użytkownikami",
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Information);
 
     // ── Backup ────────────────────────────────────────────────────────────────
 

@@ -9,27 +9,45 @@ namespace SKRYBEK.Services.Auth;
 
 public sealed class AuthService
 {
-    private readonly AuthRepository _repo;
+    private readonly ChomikAuthRepository _chomikAuth;
 
-    public AuthService(AuthRepository repo)
+    public AuthService(ChomikAuthRepository chomikAuth)
     {
-        _repo = repo;
+        _chomikAuth = chomikAuth;
     }
 
+    /// <summary>Zwraca listę loginów z CHOMIK do wyświetlenia w oknie logowania.</summary>
+    public async Task<List<UserAccount>> GetAvailableUsersAsync()
+    {
+        return await _chomikAuth.GetAllAsync();
+    }
+
+    /// <summary>Loguje użytkownika weryfikując hasło w bazie CHOMIK (Base64-SHA256).</summary>
     public async Task<SessionInfo?> LoginAsync(string login, string haslo)
     {
-        var user = await _repo.GetByLoginAsync(login.Trim().ToLower());
+        var user = await _chomikAuth.GetByLoginAsync(login.Trim());
         if (user is null)
         {
             SkrybekLog.Warning($"Nieudana próba logowania: {login}");
             return null;
         }
 
-        var hash = HashPassword(haslo, user.HasloSol);
-        if (!hash.Equals(user.HasloHash, StringComparison.OrdinalIgnoreCase))
+        // Konto PA — może mieć puste hasło
+        if (string.IsNullOrEmpty(user.HasloHash))
         {
-            SkrybekLog.Warning($"Błędne hasło dla użytkownika: {login}");
-            return null;
+            if (!string.IsNullOrEmpty(haslo))
+            {
+                SkrybekLog.Warning($"Konto PA nie wymaga hasła: {login}");
+                return null;
+            }
+        }
+        else
+        {
+            if (!VerifyChomikPassword(haslo, user.HasloHash, user.HasloSol))
+            {
+                SkrybekLog.Warning($"Błędne hasło dla użytkownika: {login}");
+                return null;
+            }
         }
 
         SkrybekLog.Info($"Zalogowano: {login} ({user.NazwaZmiany})");
@@ -45,23 +63,23 @@ public sealed class AuthService
         };
     }
 
-    public string GenerateSalt() => Guid.NewGuid().ToString("N");
-
-    public string HashPassword(string password, string salt)
+    /// <summary>CHOMIK: Base64(SHA256(UTF8(password + salt)))</summary>
+    public static bool VerifyChomikPassword(string password, string hash, string salt)
     {
-        using var sha = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(password + salt);
-        return Convert.ToHexString(sha.ComputeHash(bytes));
+        var computed = ComputeChomikHash(password, salt);
+        return computed == hash;
     }
 
-    public async Task ChangePasswordAsync(int userId, string noweHaslo)
+    public static string ComputeChomikHash(string password, string salt)
     {
-        var user = (await _repo.GetAllAsync()).FirstOrDefault(u => u.Id == userId)
-            ?? throw new InvalidOperationException("Użytkownik nie istnieje.");
+        var bytes = Encoding.UTF8.GetBytes(password + salt);
+        var hashBytes = SHA256.HashData(bytes);
+        return Convert.ToBase64String(hashBytes);
+    }
 
-        user.HasloSol  = GenerateSalt();
-        user.HasloHash = HashPassword(noweHaslo, user.HasloSol);
-        await _repo.UpsertAsync(user);
-        SkrybekLog.Info($"Zmieniono hasło użytkownika Id={userId}");
+    public static string GenerateSalt()
+    {
+        var saltBytes = RandomNumberGenerator.GetBytes(16);
+        return Convert.ToBase64String(saltBytes);
     }
 }

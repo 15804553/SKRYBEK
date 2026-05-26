@@ -2,30 +2,31 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:conv="clr-namespace:SKRYBEK.App.Converters;assembly=SKRYBEK">
 
+    <!-- Konwertery -->
     <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
     <conv:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
     <conv:InverseBoolConverter x:Key="InverseBoolConverter" />
 
-    <!-- Paleta piaskowa (#C2B280) -->
-    <Color x:Key="BackgroundColor">#D9CFA8</Color>
-    <Color x:Key="SurfaceColor">#CFC59A</Color>
-    <Color x:Key="SurfaceVariantColor">#C2B280</Color>
-    <Color x:Key="BorderColor">#A89868</Color>
-    <Color x:Key="AccentColor">#8B7D56</Color>
-    <Color x:Key="AccentLightColor">#B8A870</Color>
-    <Color x:Key="ForegroundColor">#2C2818</Color>
-    <Color x:Key="ForegroundMutedColor">#5C5538</Color>
-    <Color x:Key="TitleBarColor">#B8AA78</Color>
-    <Color x:Key="ButtonHoverColor">#A08850</Color>
+    <!-- Paleta grafitowa (grafit + szarości) -->
+    <Color x:Key="BackgroundColor">#1E1E1E</Color>
+    <Color x:Key="SurfaceColor">#2D2D2D</Color>
+    <Color x:Key="SurfaceVariantColor">#383838</Color>
+    <Color x:Key="BorderColor">#4A4A4A</Color>
+    <Color x:Key="AccentColor">#5A7A9A</Color>
+    <Color x:Key="AccentLightColor">#7AAAC8</Color>
+    <Color x:Key="ForegroundColor">#E0E0E0</Color>
+    <Color x:Key="ForegroundMutedColor">#9E9E9E</Color>
+    <Color x:Key="TitleBarColor">#252525</Color>
+    <Color x:Key="ButtonHoverColor">#3A3A3A</Color>
     <Color x:Key="ButtonCloseColor">#C42B1C</Color>
 
     <!-- Wyróżnienia grafiku -->
     <Color x:Key="SaturdayColor">#4A7AB0</Color>
     <Color x:Key="SundayColor">#B04040</Color>
-    <Color x:Key="DyzurColor">#1A3A5C</Color>
-    <Color x:Key="WolnaSluzbzColor">#3A5C1A</Color>
-    <Color x:Key="UrlopColor">#5C3A1A</Color>
+    <Color x:Key="DyzurColor">#2A5A8C</Color>
+    <Color x:Key="WolnaSluzbzColor">#2E6A3A</Color>
+    <Color x:Key="UrlopColor">#6A3A1A</Color>
     <Color x:Key="AlertColor">#FF6B6B</Color>
     <Color x:Key="OkColor">#6BCB77</Color>
 
@@ -106,7 +107,7 @@
     <!-- Przycisk główny (akcja) -->
     <Style x:Key="PrimaryButton" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-        <Setter Property="Foreground" Value="#F5F0E1" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
         <Setter Property="Padding" Value="16,10" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="FontWeight" Value="SemiBold" />

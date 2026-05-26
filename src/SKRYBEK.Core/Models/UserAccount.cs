@@ -13,6 +13,8 @@ public sealed class UserAccount
 
     public bool IsReadOnly => Role == UserRole.PA;
 
+    public override string ToString() => Login;
+
     public string NazwaZmiany => Role switch
     {
         UserRole.Zmiana1 => "Zmiana 1",

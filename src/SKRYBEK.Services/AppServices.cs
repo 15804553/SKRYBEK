@@ -16,11 +16,12 @@ public sealed class AppServices
     public BoberConnectionFactory   BoberDb   { get; }
     public ChomikConnectionFactory  ChomikDb  { get; }
 
-    public UstawieniaRepository UstawieniaRepo { get; }
-    public AuthRepository       AuthRepo       { get; }
-    public RozkazRepository     RozkazRepo     { get; }
-    public SamochodyRepository  SamochodyRepo  { get; }
-    public PersonnelRepository  PersonnelRepo  { get; }
+    public UstawieniaRepository  UstawieniaRepo  { get; }
+    public AuthRepository        AuthRepo        { get; }
+    public ChomikAuthRepository  ChomikAuthRepo  { get; }
+    public RozkazRepository      RozkazRepo      { get; }
+    public SamochodyRepository   SamochodyRepo   { get; }
+    public PersonnelRepository   PersonnelRepo   { get; }
 
     public AuthService      Auth      { get; }
     public RozkazService    Rozkaz    { get; }
@@ -41,11 +42,12 @@ public sealed class AppServices
 
         UstawieniaRepo = new UstawieniaRepository(skrybek);
         AuthRepo       = new AuthRepository(skrybek);
+        ChomikAuthRepo = new ChomikAuthRepository(chomik);
         RozkazRepo     = new RozkazRepository(skrybek);
         SamochodyRepo  = new SamochodyRepository(skrybek);
         PersonnelRepo  = new PersonnelRepository(bober, chomik);
 
-        Auth       = new AuthService(AuthRepo);
+        Auth       = new AuthService(ChomikAuthRepo);
         Rozkaz     = new RozkazService(RozkazRepo, SamochodyRepo);
         Personnel  = new PersonnelService(PersonnelRepo);
         Backup     = new BackupService(skrybek, UstawieniaRepo);

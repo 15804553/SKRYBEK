@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using SKRYBEK.App.ViewModels;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Services.Logging;
 
 namespace SKRYBEK.App.Views;
 
@@ -16,17 +17,24 @@ public partial class MainWindow : Window
 
     public async Task InitializeAsync(SessionInfo session)
     {
+        SkrybekLog.Info($"InitializeAsync: sesja={session.Login}, rola={session.NazwaZmiany}");
+
         _vm = new MainViewModel(session);
         DataContext = _vm;
 
         UserLabel.Text = $"{session.Login}  |  {session.NazwaZmiany}";
+        SkrybekLog.Info("InitializeAsync: UserLabel ustawiony");
 
-        // Wypełnij combo lat
+        // Wypełnij combo lat — tymczasowo odłącz handler żeby uniknąć podwójnego Load
+        RokCombo.SelectionChanged -= RokCombo_SelectionChanged;
         var lata = Enumerable.Range(DateTime.Today.Year - 2, 5).Reverse().ToList();
         RokCombo.ItemsSource = lata;
         RokCombo.SelectedItem = DateTime.Today.Year;
+        RokCombo.SelectionChanged += RokCombo_SelectionChanged;
+        SkrybekLog.Info("InitializeAsync: RokCombo ustawiony");
 
         await _vm.LoadAsync();
+        SkrybekLog.Info("InitializeAsync: zakończono ładowanie rozkazów");
     }
 
     private void RozkazyList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -66,8 +74,13 @@ public partial class MainWindow : Window
     private void Logout_Click(object sender, RoutedEventArgs e)
     {
         _vm.Logout();
+
+        Application.Current.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
         var login = new LoginWindow();
-        if (login.ShowDialog() == true && login.Session is not null)
+        var ok = login.ShowDialog();
+        Application.Current.ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose;
+
+        if (ok == true && login.Session is not null)
         {
             _ = InitializeAsync(login.Session);
         }

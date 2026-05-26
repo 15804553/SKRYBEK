@@ -1,0 +1,23 @@
+{
+  "naglowki": {
+    "sobota": "#80B0FF",
+    "niedziela": "#FF6060",
+    "dzienRoboczy": "#F0E0A0",
+    "liczbaDnia": "#E0E0E0"
+  },
+  "komorki": {
+    "nieobecnoscTlo": "#6A5C00",
+    "nieobecnoscTekst": "#FFE060",
+    "podsumowanie": "#252525"
+  },
+  "excel": {
+    "naglowek": "#2A2A2A",
+    "sobota": "#1A3060",
+    "niedziela": "#601A1A",
+    "siatka": "#505050",
+    "siatkaZewnetrzna": "#707070",
+    "wierszParzysty": "#2D2D2D",
+    "wierszNieparzysty": "#333333",
+    "podsumowanie": "#252525"
+  }
+}

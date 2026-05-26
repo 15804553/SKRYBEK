@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Database\EmptyTemplate.accdb" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SKRYBEK.Core\SKRYBEK.Core.csproj" />
   </ItemGroup>
 

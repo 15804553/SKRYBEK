@@ -31,8 +31,8 @@ internal static class SchemaScripts
             Rok INTEGER NOT NULL,
             Data DATETIME NOT NULL,
             ZmianaId SHORT NOT NULL,
-            Zajecia TEXT(500),
-            Uwagi TEXT(1000),
+            Zajecia MEMO,
+            Uwagi MEMO,
             DataUtworzenia DATETIME NOT NULL,
             Status SHORT NOT NULL DEFAULT 0
         )
@@ -77,7 +77,7 @@ internal static class SchemaScripts
         """
         CREATE TABLE Ustawienia (
             Klucz TEXT(100) NOT NULL PRIMARY KEY,
-            Wartosc TEXT(500) NOT NULL
+            Wartosc TEXT(255) NOT NULL
         )
         """
     ];

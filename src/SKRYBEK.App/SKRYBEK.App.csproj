@@ -29,6 +29,7 @@
   <ItemGroup>
     <Resource Include="Resources\skrybek.ico" />
     <Resource Include="Resources\skrybek_logo.png" />
+    <Resource Include="Resources\skrybek_icon.png" />
     <Resource Include="Themes\SkrybekTheme.xaml" />
   </ItemGroup>
 
@@ -37,6 +38,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Themes\kolory-rol.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Themes\kolory-grafik.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
