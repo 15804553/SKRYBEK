@@ -36,13 +36,23 @@ public partial class LoginWindow : Window
         };
     }
 
+    private void OnLoginClick(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        TryLogin();
+    }
+
     private void Input_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
-        {
-            var haslo = _vm.HasloWymagane ? PasswordBox.Password : string.Empty;
-            if (_vm.LoginCommand.CanExecute(haslo))
-                _vm.LoginCommand.Execute(haslo);
-        }
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        TryLogin();
+    }
+
+    private void TryLogin()
+    {
+        var haslo = _vm.HasloWymagane ? PasswordBox.Password : string.Empty;
+        if (_vm.LoginCommand.CanExecute(haslo))
+            _vm.LoginCommand.Execute(haslo);
     }
 }

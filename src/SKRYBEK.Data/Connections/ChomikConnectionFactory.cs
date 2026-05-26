@@ -5,7 +5,7 @@ namespace SKRYBEK.Data.Connections;
 public sealed class ChomikConnectionFactory
 {
     private string _databasePath;
-    private const string Password = "5359";
+    private static readonly string[] DatabasePasswords = ["5359", "5393"];
 
     public ChomikConnectionFactory(string databasePath)
     {
@@ -16,9 +16,32 @@ public sealed class ChomikConnectionFactory
 
     public OleDbConnection Create()
     {
-        var connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={_databasePath};Jet OLEDB:Database Password={Password};";
-        return new OleDbConnection(connectionString);
+        if (string.IsNullOrWhiteSpace(_databasePath))
+            throw new InvalidOperationException("Nie ustawiono ścieżki bazy CHOMIK w ustawieniach SKRYBEK.");
+
+        Exception? lastError = null;
+        foreach (var pwd in DatabasePasswords)
+        {
+            try
+            {
+                var conn = new OleDbConnection(BuildConnectionString(pwd));
+                conn.Open();
+                conn.Close();
+                return new OleDbConnection(BuildConnectionString(pwd));
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Nie można otworzyć bazy CHOMIK:\n{_databasePath}",
+            lastError);
     }
+
+    private string BuildConnectionString(string databasePassword) =>
+        $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={_databasePath};Jet OLEDB:Database Password={databasePassword};";
 
     public string DatabasePath => _databasePath;
 
@@ -28,7 +51,7 @@ public sealed class ChomikConnectionFactory
         {
             await using var conn = Create();
             await conn.OpenAsync();
-            return true;
+            return conn.State == System.Data.ConnectionState.Open;
         }
         catch
         {

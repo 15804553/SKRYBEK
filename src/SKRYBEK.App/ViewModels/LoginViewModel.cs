@@ -16,6 +16,7 @@ public sealed partial class LoginViewModel : ObservableObject
     private string _blad = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LoginCommand))]
     private bool _isLoading;
 
     [ObservableProperty]
@@ -66,18 +67,18 @@ public sealed partial class LoginViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanLogin))]
     private async Task LoginAsync(string haslo)
     {
-        if (WybranyUzytkownik is null) return;
+        if (WybranyUzytkownik is null || IsLoading) return;
 
         Blad = string.Empty;
         IsLoading = true;
         try
         {
-            var session = await App.Services.Auth.LoginAsync(WybranyUzytkownik.Login, haslo);
+            var session = await App.Services.Auth.LoginAsync(WybranyUzytkownik, haslo);
             if (session is null)
             {
                 Blad = HasloWymagane
-                    ? "Nieprawidłowe hasło."
-                    : "Błąd logowania.";
+                    ? "Nieprawidłowe hasło. Użyj tego samego hasła co w aplikacji CHOMIK."
+                    : "Błąd logowania — dla konta PA pozostaw hasło puste.";
                 return;
             }
             Session = session;
@@ -85,6 +86,7 @@ public sealed partial class LoginViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            SkrybekLog.Error("Błąd logowania", ex);
             Blad = $"Błąd połączenia z bazą:\n{ex.Message}";
         }
         finally
@@ -93,5 +95,5 @@ public sealed partial class LoginViewModel : ObservableObject
         }
     }
 
-    private bool CanLogin() => WybranyUzytkownik is not null;
+    private bool CanLogin() => WybranyUzytkownik is not null && !IsLoading;
 }

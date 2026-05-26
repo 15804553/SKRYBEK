@@ -95,11 +95,10 @@
                            Margin="0,8,0,8"
                            Visibility="{Binding Blad, Converter={StaticResource StringToVisibilityConverter}}" />
 
-                <!-- Przycisk Zaloguj -->
+                <!-- Przycisk Zaloguj (hasło z code-behind — PasswordBox nie obsługuje bindingu) -->
                 <Button Content="Zaloguj się"
                         Style="{StaticResource PrimaryButton}"
-                        Command="{Binding LoginCommand}"
-                        CommandParameter="{Binding ElementName=PasswordBox, Path=Password}"
+                        Click="OnLoginClick"
                         IsDefault="True"
                         Margin="0,8,0,0" />
 

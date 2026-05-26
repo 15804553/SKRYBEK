@@ -1,11 +1,21 @@
 using System.Data.Common;
+using System.Text;
 
 namespace SKRYBEK.Data;
 
 internal static class OleDbReaderExtensions
 {
     public static string GetStringSafe(this DbDataReader r, int ordinal)
-        => r.IsDBNull(ordinal) ? string.Empty : r.GetString(ordinal);
+    {
+        if (r.IsDBNull(ordinal)) return string.Empty;
+        var value = r.GetValue(ordinal);
+        return value switch
+        {
+            string s => s,
+            byte[] bytes => Encoding.UTF8.GetString(bytes),
+            _ => Convert.ToString(value) ?? string.Empty
+        };
+    }
 
     public static int? GetIntOrNull(this DbDataReader r, int ordinal)
         => r.IsDBNull(ordinal) ? null : Convert.ToInt32(r.GetValue(ordinal));
