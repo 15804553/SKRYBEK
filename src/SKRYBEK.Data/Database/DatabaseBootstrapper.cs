@@ -113,10 +113,8 @@ public sealed class DatabaseBootstrapper
 
         var defaults = new Dictionary<string, string>
         {
-            ["SciezkaBoberBazy"]  = @"C:\Users\Maciej\source\repos\BOBER\src\BOBER.App\bin\Release\net10.0-windows\win-x64\BoberDatabase.accdb",
-            ["SciezkaChomikBazy"] = @"C:\Users\Maciej\AppData\Local\CHOMIK\ChomikDatabase.accdb",
-            ["NrJRG"]             = "4",
-            ["OstatniBackup"]     = string.Empty
+            ["NrJRG"]         = "4",
+            ["OstatniBackup"] = string.Empty
         };
 
         foreach (var (klucz, wartosc) in defaults)

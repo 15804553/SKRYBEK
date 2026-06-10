@@ -1,4 +1,5 @@
 using System.Windows;
+using SKRYBEK.App.Helpers;
 
 namespace SKRYBEK.App.Views;
 
@@ -15,12 +16,12 @@ public partial class ChangePasswordDialog : Window
     {
         if (Haslo1.Password != Haslo2.Password)
         {
-            MessageBox.Show("Hasła nie są identyczne.", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SkrybekMessageBox.ShowWarning("Hasła nie są identyczne.", "Błąd", this);
             return;
         }
         if (Haslo1.Password.Length < 4)
         {
-            MessageBox.Show("Hasło musi mieć co najmniej 4 znaki.", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SkrybekMessageBox.ShowWarning("Hasło musi mieć co najmniej 4 znaki.", "Błąd", this);
             return;
         }
         NoweHaslo    = Haslo1.Password;

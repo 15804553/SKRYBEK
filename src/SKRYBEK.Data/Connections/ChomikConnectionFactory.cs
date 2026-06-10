@@ -1,10 +1,11 @@
 using System.Data.OleDb;
+using SKRYBEK.Core.Configuration;
 
 namespace SKRYBEK.Data.Connections;
 
 public sealed class ChomikConnectionFactory
 {
-    private string _databasePath;
+    private readonly string _databasePath;
     private static readonly string[] DatabasePasswords = ["5359", "5393"];
 
     public ChomikConnectionFactory(string databasePath)
@@ -12,12 +13,11 @@ public sealed class ChomikConnectionFactory
         _databasePath = databasePath;
     }
 
-    public void UpdatePath(string path) => _databasePath = path;
-
     public OleDbConnection Create()
     {
         if (string.IsNullOrWhiteSpace(_databasePath))
-            throw new InvalidOperationException("Nie ustawiono ścieżki bazy CHOMIK w ustawieniach SKRYBEK.");
+            throw new InvalidOperationException(
+                $"Nie ustawiono ścieżki bazy CHOMIK w pliku {DatabasePatch.FileName}.");
 
         Exception? lastError = null;
         foreach (var pwd in DatabasePasswords)

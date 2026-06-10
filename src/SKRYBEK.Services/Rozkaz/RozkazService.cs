@@ -1,5 +1,6 @@
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Core.Rules;
 using SKRYBEK.Data.Repositories;
 using SKRYBEK.Services.Logging;
 
@@ -24,7 +25,7 @@ public sealed class RozkazService
 
     public async Task<RozkazDzienny> NowyRozkazAsync(DateOnly data, int nrZmiany)
     {
-        var numer = await _repo.GetNastepnyNumerAsync(data.Year);
+        var numer = DateTime.Today.DayOfYear;
         var samochody = await _samochodyRepo.GetAktywneAsync();
 
         var rozkaz = new RozkazDzienny
@@ -64,9 +65,10 @@ public sealed class RozkazService
         return rozkaz;
     }
 
-    public async Task<int> ZapiszAsync(RozkazDzienny rozkaz)
+    public async Task<int> ZapiszAsync(RozkazDzienny rozkaz, IReadOnlyList<Funkcjonariusz>? personel = null)
     {
-        ValidateKonfliktyPojazdow(rozkaz);
+        var samochody = await _samochodyRepo.GetAktywneAsync();
+        ValidatePodzialBojowy(rozkaz, samochody, personel);
         var id = await _repo.SaveAsync(rozkaz);
         SkrybekLog.Info($"Zapisano rozkaz nr {rozkaz.NumerRozkazu}/{rozkaz.Rok}, Id={id}");
         return id;
@@ -78,28 +80,8 @@ public sealed class RozkazService
         SkrybekLog.Info($"Usunięto rozkaz Id={id}");
     }
 
-    /// <summary>Sprawdza czy żadna osoba nie jest przypisana do dwóch pojazdów podstawowych.</summary>
-    public void ValidateKonfliktyPojazdow(RozkazDzienny rozkaz)
-    {
-        var podstawowe = rozkaz.PodzialBojowy
-            .Where(p => p.FunkcjonariuszId.HasValue)
-            .GroupBy(p => p.SamochodId)
-            .ToLookup(g => g.Key);
-
-        // Zbierz ID pojazdów podstawowych
-        // Zakładamy że baza danych ma poprawne Id — używamy cache z NowyRozkazAsync lub sprawdzamy typ
-        // Walidacja: ta sama osoba na dwóch różnych samochodach podstawowych
-        var osobyNaPodstawowych = rozkaz.PodzialBojowy
-            .Where(p => p.FunkcjonariuszId.HasValue)
-            .GroupBy(p => p.FunkcjonariuszId!.Value)
-            .Where(g => g.Select(p => p.SamochodId).Distinct().Count() > 1);
-
-        // Uwaga: walidacja pełna wymaga informacji o typie pojazdu — sprawdzana w VM
-        // Tu logujemy ostrzeżenie (sprawdzenie typów odbywa się w AssignFunkcjonariuszToVehicle)
-    }
-
     /// <summary>
-    /// Sprawdza konflikt: czy dana osoba jest już przypisana do pojazdu podstawowego.
+    /// Sprawdza konflikt: czy dana osoba jest już przypisana do innego pojazdu podstawowego.
     /// Zwraca true jeśli przypisanie jest dozwolone.
     /// </summary>
     public static bool MoznaAssignowacDoPodstawowego(
@@ -116,5 +98,48 @@ public sealed class RozkazService
         return !rozkaz.PodzialBojowy.Any(p =>
             p.FunkcjonariuszId == funkcjonariuszId &&
             podstawoweIds.Contains(p.SamochodId));
+    }
+
+    public static void ValidatePodzialBojowy(
+        RozkazDzienny rozkaz,
+        IReadOnlyList<Samochod> samochody,
+        IReadOnlyList<Funkcjonariusz>? personel = null)
+    {
+        var samochodPoId = samochody.ToDictionary(s => s.Id);
+        var personelPoId = personel?.ToDictionary(p => p.Id);
+
+        if (personelPoId is not null)
+        {
+            foreach (var pozycja in rozkaz.PodzialBojowy.Where(p => p.FunkcjonariuszId.HasValue))
+            {
+                if (!samochodPoId.TryGetValue(pozycja.SamochodId, out var samochod))
+                    continue;
+
+                if (!personelPoId.TryGetValue(pozycja.FunkcjonariuszId!.Value, out var osoba))
+                    continue;
+
+                if (!PozycjaSamochoduRules.CzyOsobaDozwolonaNaPozycji(osoba, pozycja.Pozycja))
+                {
+                    throw new InvalidOperationException(
+                        $"{osoba.StopienINazwisko} — pozycja {PozycjaSamochoduRules.EtykietaPozycji(pozycja.Pozycja)} " +
+                        $"w pojeździe „{samochod.Nazwa}”: {PozycjaSamochoduRules.OpisWymagania(pozycja.Pozycja)}");
+                }
+            }
+        }
+
+        var podstawoweIds = samochody.Where(s => s.CzyPodstawowy).Select(s => s.Id).ToHashSet();
+        var duplikaty = rozkaz.PodzialBojowy
+            .Where(p => p.FunkcjonariuszId.HasValue && podstawoweIds.Contains(p.SamochodId))
+            .GroupBy(p => p.FunkcjonariuszId!.Value)
+            .Where(g => g.Select(p => p.SamochodId).Distinct().Count() > 1)
+            .ToList();
+
+        if (duplikaty.Count > 0)
+        {
+            var nazwisko = duplikaty[0].First().Nazwisko;
+            throw new InvalidOperationException(
+                $"Osoba {nazwisko} jest przypisana do więcej niż jednego pojazdu podstawowego. " +
+                "Ta sama osoba nie może siedzieć na dwóch pojazdach podstawowych.");
+        }
     }
 }

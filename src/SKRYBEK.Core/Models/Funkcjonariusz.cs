@@ -1,3 +1,5 @@
+using SKRYBEK.Core.Chomik;
+
 namespace SKRYBEK.Core.Models;
 
 public sealed class Funkcjonariusz
@@ -16,21 +18,29 @@ public sealed class Funkcjonariusz
     public string PelneImieNazwisko => $"{Imie} {Nazwisko}".Trim();
     public string StopienINazwisko => $"{Stopien} {Nazwisko}".Trim();
 
+    /// <summary>Id typów uprawnień z tabeli TypyUprawnien (CHOMIK).</summary>
+    public List<int> IdUprawnien { get; set; } = [];
+
+    /// <summary>Pełne nazwy uprawnień (Nazwa + Podtyp) z CHOMIK — do wyświetlania i filtrów.</summary>
     public List<string> NazwyUprawnien { get; set; } = [];
+
     public List<string> NazwyFunkcjiDodatkowych { get; set; } = [];
 
     public bool MaUprawnieniaKierowcaC =>
-        NazwyUprawnien.Any(u => u.Contains("kat. C", StringComparison.OrdinalIgnoreCase)
-                             && !u.Contains("C+E", StringComparison.OrdinalIgnoreCase));
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieKierowcaKatC);
 
     public bool MaUprawnieniaKierowcaCE =>
-        NazwyUprawnien.Any(u => u.Contains("kat. C+E", StringComparison.OrdinalIgnoreCase));
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieKierowcaKatCE);
 
     public bool MaUprawnieniaKierowca => MaUprawnieniaKierowcaC || MaUprawnieniaKierowcaCE;
 
     public bool MaUprawnieniaNumek =>
-        NazwyUprawnien.Any(u => u.Contains("Nurek", StringComparison.OrdinalIgnoreCase));
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieNurek);
 
     public bool MaUprawnieniaKPP =>
-        NazwyUprawnien.Any(u => u.Contains("Kierownik prac podwodnych", StringComparison.OrdinalIgnoreCase));
+        IdUprawnien.Contains(ChomikSlowniki.UprawnienieKPP);
+
+    /// <summary>Miejsce 1.D — stanowisko lub funkcja dodatkowa z CHOMIK.</summary>
+    public bool CzyMozeNaMiejsce1DPojazdu =>
+        ChomikSlowniki.CzyMozeNaMiejsce1DPojazdu(StanowiskoId, NazwyFunkcjiDodatkowych);
 }

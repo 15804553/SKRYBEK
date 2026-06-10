@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using SKRYBEK.App.Helpers;
+using SKRYBEK.Core.Configuration;
 using SKRYBEK.Services;
 using SKRYBEK.Services.Logging;
 
@@ -29,11 +31,11 @@ public partial class App : Application
         catch (Exception ex)
         {
             SkrybekLog.Error("Błąd inicjalizacji bazy danych", ex);
-            MessageBox.Show(
-                $"Błąd inicjalizacji bazy danych:\n{ex.Message}\n\nSprawdź czy zainstalowany jest Microsoft Access Database Engine (x64).",
-                "SKRYBEK — Błąd startu",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            SkrybekMessageBox.ShowError(
+                $"Błąd inicjalizacji:\n{ex.Message}\n\n" +
+                $"Ścieżki baz CHOMIK i BOBER ustaw w pliku:\n{DatabasePatch.GetFilePath()}\n\n" +
+                "Sprawdź też czy zainstalowany jest Microsoft Access Database Engine (x64).",
+                "SKRYBEK — Błąd startu");
             Shutdown(1);
             return;
         }
@@ -73,11 +75,9 @@ public partial class App : Application
         catch (Exception ex)
         {
             SkrybekLog.Error("Błąd inicjalizacji okna głównego", ex);
-            MessageBox.Show(
+            SkrybekMessageBox.ShowError(
                 $"Błąd podczas otwierania okna głównego:\n{ex.Message}",
-                "SKRYBEK — Błąd",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                "SKRYBEK — Błąd");
             Shutdown(1);
         }
     }
@@ -85,11 +85,9 @@ public partial class App : Application
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         SkrybekLog.Error("Nieobsłużony wyjątek w wątku UI", e.Exception);
-        MessageBox.Show(
+        SkrybekMessageBox.ShowError(
             $"Nieoczekiwany błąd:\n{e.Exception.Message}",
-            "SKRYBEK — Błąd krytyczny",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
+            "SKRYBEK — Błąd krytyczny");
         e.Handled = true;
     }
 

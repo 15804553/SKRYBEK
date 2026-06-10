@@ -4,15 +4,13 @@ namespace SKRYBEK.Data.Connections;
 
 public sealed class BoberConnectionFactory
 {
-    private string _databasePath;
+    private readonly string _databasePath;
     private const string Password = "5359";
 
     public BoberConnectionFactory(string databasePath)
     {
         _databasePath = databasePath;
     }
-
-    public void UpdatePath(string path) => _databasePath = path;
 
     public OleDbConnection Create()
     {

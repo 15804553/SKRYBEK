@@ -1,6 +1,6 @@
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SKRYBEK.App.Helpers;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Services.Logging;
 
@@ -47,27 +47,34 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = string.Empty;
         try
         {
-            var data     = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
             var nrZmiany = Session.NumerZmiany > 0 ? Session.NumerZmiany : 1;
+            var dzisiaj  = DateOnly.FromDateTime(DateTime.Today);
+            var data     = await App.Services.Personnel.GetNastepnyDzienSluzbyPoAsync(nrZmiany, dzisiaj);
+
+            SkrybekLog.Info(
+                $"Nowy rozkaz: zmiana {nrZmiany}, dzisiaj {dzisiaj:yyyy-MM-dd}, data rozkazu {data:yyyy-MM-dd}");
 
             var rozkaz    = await App.Services.Rozkaz.NowyRozkazAsync(data, nrZmiany);
             var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
             var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
             var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
 
+            WybranyRozkaz = null;
+            EditorVm = null;
             EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, nrJrg, Session, isNew: true);
             EditorVm.Saved += OnRozkazSaved;
-            WybranyRozkaz = null;
+
+            StatusMessage = personel.Count == 0
+                ? $"Brak personelu na {data:dd.MM.yyyy}. Sprawdź grafik BOBER i BoberDatabase w DatabasePatch.txt."
+                : $"Nowy rozkaz na {data:dd.MM.yyyy} — dostępnych: {personel.Count}";
         }
         catch (Exception ex)
         {
             SkrybekLog.Error("Błąd podczas tworzenia nowego rozkazu", ex);
             StatusMessage = $"Błąd: {ex.Message}";
-            MessageBox.Show(
+            SkrybekMessageBox.ShowError(
                 $"Nie można utworzyć nowego rozkazu:\n{ex.Message}",
-                "SKRYBEK — Błąd",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                "SKRYBEK — Błąd");
         }
         finally
         {
@@ -100,11 +107,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             SkrybekLog.Error($"Błąd podczas otwierania rozkazu Id={rozkaz.Id}", ex);
             StatusMessage = $"Błąd: {ex.Message}";
-            MessageBox.Show(
+            SkrybekMessageBox.ShowError(
                 $"Nie można otworzyć rozkazu:\n{ex.Message}",
-                "SKRYBEK — Błąd",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                "SKRYBEK — Błąd");
         }
         finally
         {
@@ -135,6 +140,33 @@ public sealed partial class MainViewModel : ObservableObject
     {
         await LoadAsync();
         StatusMessage = $"Rozkaz zapisany — Id {id}";
+    }
+
+    /// <summary>Odświeża listę rozkazów i otwarty edytor po zamknięciu ustawień.</summary>
+    public async Task OdswiezPoUstawieniachAsync()
+    {
+        await LoadAsync();
+        if (Session is null || EditorVm is null) return;
+
+        try
+        {
+            var data = EditorVm.Data;
+            var nrZmiany = WybranyRozkaz?.ZmianaId
+                           ?? (Session.NumerZmiany > 0 ? Session.NumerZmiany : 1);
+
+            var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
+            var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
+            var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(
+                Core.Models.UstawieniaKlucze.NrJRG, "4");
+
+            EditorVm.OdswiezPoZamknieciuUstawien(samochody, personel, nrJrg);
+            StatusMessage = $"Odświeżono widok — dostępnych: {personel.Count}";
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error("Błąd odświeżania po ustawieniach", ex);
+            StatusMessage = $"Błąd odświeżania: {ex.Message}";
+        }
     }
 
     public void Logout()

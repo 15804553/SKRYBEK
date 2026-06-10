@@ -16,10 +16,30 @@ public sealed class AuthService
         _chomikAuth = chomikAuth;
     }
 
-    /// <summary>Zwraca listę loginów z CHOMIK do wyświetlenia w oknie logowania.</summary>
+    /// <summary>Zwraca listę kont do wyświetlenia w oknie logowania: Zmiana 1–3, PA, DCA JRG.</summary>
     public async Task<List<UserAccount>> GetAvailableUsersAsync()
     {
-        return await _chomikAuth.GetAllAsync();
+        var dozwolone = new HashSet<UserRole>
+        {
+            UserRole.Zmiana1, UserRole.Zmiana2, UserRole.Zmiana3, UserRole.PA, UserRole.DCAJRG
+        };
+
+        var kolejnosc = new Dictionary<UserRole, int>
+        {
+            [UserRole.Zmiana1] = 0,
+            [UserRole.Zmiana2] = 1,
+            [UserRole.Zmiana3] = 2,
+            [UserRole.PA]      = 3,
+            [UserRole.DCAJRG]  = 4
+        };
+
+        var wszyscy = await _chomikAuth.GetAllAsync();
+        return wszyscy
+            .Where(u => dozwolone.Contains(u.Role))
+            .GroupBy(u => u.Role)
+            .Select(g => g.First())
+            .OrderBy(u => kolejnosc[u.Role])
+            .ToList();
     }
 
     /// <summary>Loguje użytkownika po loginie (ponowny odczyt z CHOMIK).</summary>

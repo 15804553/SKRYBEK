@@ -1,0 +1,9 @@
+1.
+Dotyczy osób które sie wybiera i ustawia w comboboxach pojazdów.
+ Jeżeli wybrano osobę to na innych listach comboboxów powinna ona byc niedostępna-wyszarzona lub wybranie jej w nowym miescu powoduje jej usunięcie w starym\poprzednim miejscu
+
+2.rozwijana lista combo z osobami u góry osoby sugerowane poniżej inne
+3.bosman,kierownik -tylko nurek
+4.sonarzysta tylko sonarzysta
+5. czy mozna dodac opcje zeby pojazd wymagal dodatkowych uprawnien,np sd-kierowca+drabiny
+6. sekcja nieobecni w słuzbie: urlopy,ws oraz dyżury wypełnione na podstawie danych z bobera

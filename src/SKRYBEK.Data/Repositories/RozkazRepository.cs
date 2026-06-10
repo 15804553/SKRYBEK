@@ -61,33 +61,47 @@ public sealed class RozkazRepository
         await conn.OpenAsync();
 
         int rozkazId;
-        if (rozkaz.Id == 0)
+        try
         {
-            await using var cmd = new OleDbCommand(
-                "INSERT INTO Rozkazy (NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                conn);
-            AddRozkazParams(cmd, rozkaz);
-            await cmd.ExecuteNonQueryAsync();
+            if (rozkaz.Id == 0)
+            {
+                await using var cmd = new OleDbCommand(
+                    "INSERT INTO Rozkazy (NumerRozkazu, Rok, Data, ZmianaId, Zajecia, Uwagi, DataUtworzenia, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    conn);
+                AddRozkazParams(cmd, rozkaz);
+                await cmd.ExecuteNonQueryAsync();
 
-            await using var idCmd = new OleDbCommand("SELECT @@IDENTITY", conn);
-            rozkazId = Convert.ToInt32(await idCmd.ExecuteScalarAsync());
-            rozkaz.Id = rozkazId;
+                await using var idCmd = new OleDbCommand("SELECT @@IDENTITY", conn);
+                rozkazId = Convert.ToInt32(await idCmd.ExecuteScalarAsync());
+                rozkaz.Id = rozkazId;
+            }
+            else
+            {
+                rozkazId = rozkaz.Id;
+                await using var cmd = new OleDbCommand(
+                    "UPDATE Rozkazy SET NumerRozkazu=?, Rok=?, Data=?, ZmianaId=?, Zajecia=?, Uwagi=?, DataUtworzenia=?, Status=? WHERE Id=?",
+                    conn);
+                AddRozkazParams(cmd, rozkaz);
+                cmd.Parameters.AddInteger(rozkaz.Id);
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            rozkazId = rozkaz.Id;
-            await using var cmd = new OleDbCommand(
-                "UPDATE Rozkazy SET NumerRozkazu=?, Rok=?, Data=?, ZmianaId=?, Zajecia=?, Uwagi=?, DataUtworzenia=?, Status=? WHERE Id=?",
-                conn);
-            AddRozkazParams(cmd, rozkaz);
-            cmd.Parameters.AddWithValue("Id", rozkaz.Id);
-            await cmd.ExecuteNonQueryAsync();
+            throw new InvalidOperationException($"Błąd zapisu nagłówka rozkazu: {ex.Message}", ex);
         }
 
-        await SaveSluzbaAsync(conn, rozkazId, rozkaz.Sluzba);
-        await SavePodzialBojowyAsync(conn, rozkazId, rozkaz.PodzialBojowy);
-        await SaveRatwnicyMedyczniAsync(conn, rozkazId, rozkaz.RatwnicyMedyczni);
-        await SaveNieobecniAsync(conn, rozkazId, rozkaz.Nieobecni);
+        try { await SaveSluzbaAsync(conn, rozkazId, rozkaz.Sluzba); }
+        catch (Exception ex) { throw new InvalidOperationException($"Błąd zapisu sekcji SŁUŻBA: {ex.Message}", ex); }
+
+        try { await SavePodzialBojowyAsync(conn, rozkazId, rozkaz.PodzialBojowy); }
+        catch (Exception ex) { throw new InvalidOperationException($"Błąd zapisu podziału bojowego: {ex.Message}", ex); }
+
+        try { await SaveRatwnicyMedyczniAsync(conn, rozkazId, rozkaz.RatwnicyMedyczni); }
+        catch (Exception ex) { throw new InvalidOperationException($"Błąd zapisu ratowników medycznych: {ex.Message}", ex); }
+
+        try { await SaveNieobecniAsync(conn, rozkazId, rozkaz.Nieobecni); }
+        catch (Exception ex) { throw new InvalidOperationException($"Błąd zapisu nieobecnych: {ex.Message}", ex); }
 
         return rozkazId;
     }
@@ -151,10 +165,10 @@ public sealed class RozkazRepository
         {
             await using var ins = new OleDbCommand(
                 "INSERT INTO RozkazSluzba (RozkazId, Stanowisko, FunkcjonariuszId, Nazwisko) VALUES (?, ?, ?, ?)", conn);
-            ins.Parameters.AddWithValue("RozkazId", rozkazId);
-            ins.Parameters.AddWithValue("Stanowisko", (int)p.Stanowisko);
-            ins.Parameters.AddWithValue("FunkcjonariuszId", (object?)p.FunkcjonariuszId ?? DBNull.Value);
-            ins.Parameters.AddWithValue("Nazwisko", p.Nazwisko);
+            ins.Parameters.AddInteger(rozkazId);
+            ins.Parameters.AddSmallInt((int)p.Stanowisko);
+            ins.Parameters.AddNullableInteger(p.FunkcjonariuszId);
+            ins.Parameters.AddText(p.Nazwisko);
             await ins.ExecuteNonQueryAsync();
         }
     }
@@ -194,11 +208,11 @@ public sealed class RozkazRepository
         {
             await using var ins = new OleDbCommand(
                 "INSERT INTO RozkazPodzialBojowy (RozkazId, SamochodId, Pozycja, FunkcjonariuszId, Nazwisko) VALUES (?, ?, ?, ?, ?)", conn);
-            ins.Parameters.AddWithValue("RozkazId", rozkazId);
-            ins.Parameters.AddWithValue("SamochodId", p.SamochodId);
-            ins.Parameters.AddWithValue("Pozycja", p.Pozycja);
-            ins.Parameters.AddWithValue("FunkcjonariuszId", (object?)p.FunkcjonariuszId ?? DBNull.Value);
-            ins.Parameters.AddWithValue("Nazwisko", p.Nazwisko);
+            ins.Parameters.AddInteger(rozkazId);
+            ins.Parameters.AddInteger(p.SamochodId);
+            ins.Parameters.AddSmallInt(p.Pozycja);
+            ins.Parameters.AddNullableInteger(p.FunkcjonariuszId);
+            ins.Parameters.AddText(p.Nazwisko);
             await ins.ExecuteNonQueryAsync();
         }
     }
@@ -237,10 +251,10 @@ public sealed class RozkazRepository
         {
             await using var ins = new OleDbCommand(
                 "INSERT INTO RozkazRatwnicyMedyczni (RozkazId, Pozycja, FunkcjonariuszId, Nazwisko) VALUES (?, ?, ?, ?)", conn);
-            ins.Parameters.AddWithValue("RozkazId", rozkazId);
-            ins.Parameters.AddWithValue("Pozycja", p.Pozycja);
-            ins.Parameters.AddWithValue("FunkcjonariuszId", (object?)p.FunkcjonariuszId ?? DBNull.Value);
-            ins.Parameters.AddWithValue("Nazwisko", p.Nazwisko);
+            ins.Parameters.AddInteger(rozkazId);
+            ins.Parameters.AddSmallInt(p.Pozycja);
+            ins.Parameters.AddNullableInteger(p.FunkcjonariuszId);
+            ins.Parameters.AddText(p.Nazwisko);
             await ins.ExecuteNonQueryAsync();
         }
     }
@@ -279,10 +293,10 @@ public sealed class RozkazRepository
         {
             await using var ins = new OleDbCommand(
                 "INSERT INTO RozkazNieobecni (RozkazId, FunkcjonariuszId, Nazwisko, TypNieobecnosci) VALUES (?, ?, ?, ?)", conn);
-            ins.Parameters.AddWithValue("RozkazId", rozkazId);
-            ins.Parameters.AddWithValue("FunkcjonariuszId", (object?)n.FunkcjonariuszId ?? DBNull.Value);
-            ins.Parameters.AddWithValue("Nazwisko", n.Nazwisko);
-            ins.Parameters.AddWithValue("TypNieobecnosci", (int)n.TypNieobecnosci);
+            ins.Parameters.AddInteger(rozkazId);
+            ins.Parameters.AddNullableInteger(n.FunkcjonariuszId);
+            ins.Parameters.AddText(n.Nazwisko);
+            ins.Parameters.AddSmallInt((int)n.TypNieobecnosci);
             await ins.ExecuteNonQueryAsync();
         }
     }
@@ -308,13 +322,13 @@ public sealed class RozkazRepository
 
     private static void AddRozkazParams(OleDbCommand cmd, RozkazDzienny rozkaz)
     {
-        cmd.Parameters.AddWithValue("NumerRozkazu", rozkaz.NumerRozkazu);
-        cmd.Parameters.AddWithValue("Rok", rozkaz.Rok);
-        cmd.Parameters.AddWithValue("Data", rozkaz.Data.ToDateTime(TimeOnly.MinValue));
-        cmd.Parameters.AddWithValue("ZmianaId", rozkaz.ZmianaId);
-        cmd.Parameters.AddWithValue("Zajecia", string.IsNullOrEmpty(rozkaz.Zajecia) ? DBNull.Value : rozkaz.Zajecia);
-        cmd.Parameters.AddWithValue("Uwagi", string.IsNullOrEmpty(rozkaz.Uwagi) ? DBNull.Value : rozkaz.Uwagi);
-        cmd.Parameters.AddWithValue("DataUtworzenia", rozkaz.DataUtworzenia);
-        cmd.Parameters.AddWithValue("Status", (int)rozkaz.Status);
+        cmd.Parameters.AddInteger(rozkaz.NumerRozkazu);
+        cmd.Parameters.AddInteger(rozkaz.Rok);
+        cmd.Parameters.AddDate(rozkaz.Data.ToDateTime(TimeOnly.MinValue));
+        cmd.Parameters.AddSmallInt(rozkaz.ZmianaId);
+        cmd.Parameters.AddMemo(rozkaz.Zajecia);
+        cmd.Parameters.AddMemo(rozkaz.Uwagi);
+        cmd.Parameters.AddDate(rozkaz.DataUtworzenia);
+        cmd.Parameters.AddSmallInt((int)rozkaz.Status);
     }
 }

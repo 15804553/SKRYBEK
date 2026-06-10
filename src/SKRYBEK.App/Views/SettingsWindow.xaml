@@ -36,6 +36,14 @@
                 <TabItem Header="Połączenia" Style="{StaticResource SkrybekTabItem}">
                     <ScrollViewer Margin="16">
                         <StackPanel>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{StaticResource ForegroundMutedBrush}"
+                                       FontSize="12"
+                                       Margin="0,0,0,12">
+                                Ścieżki baz CHOMIK i BOBER są odczytywane wyłącznie z pliku DatabasePatch.txt obok programu.
+                                Aby je zmienić, edytuj plik i uruchom SKRYBEK ponownie.
+                            </TextBlock>
+
                             <TextBlock Text="Baza danych BOBER"
                                        Style="{StaticResource SectionHeader}"
                                        Margin="0,0,0,6" />
@@ -43,18 +51,13 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0"
                                          Style="{StaticResource DarkTextBox}"
-                                         Text="{Binding SciezkaBoberBazy, UpdateSourceTrigger=PropertyChanged}"
+                                         Text="{Binding SciezkaBoberBazy}"
+                                         IsReadOnly="True"
                                          Margin="0,0,8,0" />
                                 <Button Grid.Column="1"
-                                        Content="Przeglądaj"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Click="BrowseBoberDb_Click"
-                                        Margin="0,0,8,0" />
-                                <Button Grid.Column="2"
                                         Content="Test"
                                         Style="{StaticResource SecondaryButton}"
                                         Command="{Binding TestBoberConnectionCommand}" />
@@ -67,18 +70,13 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0"
                                          Style="{StaticResource DarkTextBox}"
-                                         Text="{Binding SciezkaChomikBazy, UpdateSourceTrigger=PropertyChanged}"
+                                         Text="{Binding SciezkaChomikBazy}"
+                                         IsReadOnly="True"
                                          Margin="0,0,8,0" />
                                 <Button Grid.Column="1"
-                                        Content="Przeglądaj"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Click="BrowseChomikDb_Click"
-                                        Margin="0,0,8,0" />
-                                <Button Grid.Column="2"
                                         Content="Test"
                                         Style="{StaticResource SecondaryButton}"
                                         Command="{Binding TestChomikConnectionCommand}" />
@@ -92,11 +90,6 @@
                                      Width="60"
                                      HorizontalAlignment="Left" />
 
-                            <Button Content="Zapisz ustawienia"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Command="{Binding ZapiszUstawieniaCommand}"
-                                    Margin="0,16,0,0"
-                                    HorizontalAlignment="Left" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -113,37 +106,66 @@
                                 Content="＋ Dodaj pojazd"
                                 Style="{StaticResource PrimaryButton}"
                                 Command="{Binding DodajSamochodCommand}"
-                                IsEnabled="{Binding IsAdmin}"
+                                IsEnabled="{Binding CanEditPojazdy}"
                                 HorizontalAlignment="Left"
                                 Margin="0,0,0,10" />
 
                         <DataGrid Grid.Row="1"
                                   Style="{StaticResource SkrybekDataGrid}"
                                   ItemsSource="{Binding Samochody}"
-                                  SelectedItem="{Binding WybranysamochodProperty}"
+                                  SelectedItem="{Binding Wybranysamochod}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
-                                  IsReadOnly="{Binding IsAdmin, Converter={StaticResource InverseBoolConverter}}">
+                                  IsReadOnly="{Binding CanEditPojazdy, Converter={StaticResource InverseBoolConverter}}">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Nazwa" Binding="{Binding Nazwa}" Width="200"
+                                <DataGridTextColumn Header="Nazwa"
+                                                    Binding="{Binding Nazwa, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="*"
+                                                    MinWidth="180"
                                                     CellStyle="{StaticResource SkrybekCell}"
                                                     HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridTextColumn Header="Pozycji" Binding="{Binding LiczbaPozycji}" Width="70"
-                                                    CellStyle="{StaticResource SkrybekCell}"
-                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridComboBoxColumn Header="Typ"
-                                                        SelectedValueBinding="{Binding Typ}"
-                                                        Width="120"
-                                                        HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridTextColumn Header="Kolejność" Binding="{Binding Kolejnosc}" Width="80"
-                                                    CellStyle="{StaticResource SkrybekCell}"
-                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridCheckBoxColumn Header="Aktywny" Binding="{Binding CzyAktywny}" Width="70"
-                                                        HeaderStyle="{StaticResource SkrybekColumnHeader}" />
-                                <DataGridTemplateColumn Width="*">
+                                <DataGridTemplateColumn Header="Typ" Width="150">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Typ, Converter={StaticResource TypSamochoduToEtykietaConverter}}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="4,0" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.TypySamochodow,
+                                                                         RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                      SelectedItem="{Binding Typ, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEditable="True"
+                                                      Style="{StaticResource DarkComboBox}"
+                                                      Margin="0">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={StaticResource TypSamochoduToEtykietaConverter}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Pozycji"
+                                                    Binding="{Binding LiczbaPozycji, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="70"
+                                                    CellStyle="{StaticResource SkrybekCell}"
+                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                <DataGridTextColumn Header="Kolejność"
+                                                    Binding="{Binding Kolejnosc, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="80"
+                                                    CellStyle="{StaticResource SkrybekCell}"
+                                                    HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                <DataGridTemplateColumn Header="Akcje" Width="Auto" MinWidth="130">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding DataContext.CanEditPojazdy,
+                                                                     RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                                     Converter={StaticResource BoolToVisibilityConverter}}">
                                                 <Button Content="Zapisz"
                                                         Style="{StaticResource SecondaryButton}"
                                                         Padding="6,2"
@@ -197,7 +219,18 @@
                                 <DataGridComboBoxColumn Header="Rola"
                                                         SelectedValueBinding="{Binding Role}"
                                                         Width="120"
-                                                        HeaderStyle="{StaticResource SkrybekColumnHeader}" />
+                                                        HeaderStyle="{StaticResource SkrybekColumnHeader}">
+                                    <DataGridComboBoxColumn.EditingElementStyle>
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource EditableDarkComboBox}">
+                                            <Setter Property="IsEditable" Value="True" />
+                                        </Style>
+                                    </DataGridComboBoxColumn.EditingElementStyle>
+                                    <DataGridComboBoxColumn.ElementStyle>
+                                        <Style TargetType="ComboBox" BasedOn="{StaticResource EditableDarkComboBox}">
+                                            <Setter Property="IsEditable" Value="True" />
+                                        </Style>
+                                    </DataGridComboBoxColumn.ElementStyle>
+                                </DataGridComboBoxColumn>
                                 <DataGridTextColumn Header="Zmiana" Binding="{Binding NumerZmiany}" Width="70"
                                                     CellStyle="{StaticResource SkrybekCell}"
                                                     HeaderStyle="{StaticResource SkrybekColumnHeader}" />
@@ -255,15 +288,29 @@
                 </TabItem>
             </TabControl>
 
-            <!-- Pasek statusu -->
+            <!-- Stopka: zapisz + status -->
             <Border Grid.Row="2"
                     Background="{StaticResource SurfaceVariantBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,1,0,0"
-                    Padding="16,6">
-                <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{StaticResource ForegroundMutedBrush}"
-                           FontSize="11" />
+                    Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusMessage}"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               FontSize="11"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="Zapisz zmiany"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding ZapiszUstawieniaCommand}"
+                            Padding="16,6"
+                            MinWidth="130" />
+                </Grid>
             </Border>
         </Grid>
     </Border>

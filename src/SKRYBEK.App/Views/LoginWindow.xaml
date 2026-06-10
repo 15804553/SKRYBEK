@@ -37,7 +37,7 @@
 
                 <!-- Logo -->
                 <Image Source="/Resources/skrybek_logo.png"
-                       Height="72"
+                       Height="96"
                        Margin="0,0,0,18"
                        HorizontalAlignment="Center"
                        RenderOptions.BitmapScalingMode="HighQuality" />
@@ -63,7 +63,8 @@
                 <ComboBox x:Name="UzytkownikCombo"
                           ItemsSource="{Binding Uzytkownicy}"
                           SelectedItem="{Binding WybranyUzytkownik, Mode=TwoWay}"
-                          DisplayMemberPath="Login"
+                          DisplayMemberPath="NazwaZmiany"
+                          IsEditable="True"
                           Style="{StaticResource DarkComboBox}"
                           Margin="0,0,0,16"
                           KeyDown="Input_KeyDown" />

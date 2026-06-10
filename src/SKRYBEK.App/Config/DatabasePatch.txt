@@ -1,0 +1,6 @@
+# Ścieżki baz danych — edytuj przed uruchomieniem SKRYBEK.
+# Program odczytuje ten plik tylko przy starcie i go nie modyfikuje.
+# Obsługiwane zmienne: %LOCALAPPDATA%, %USERPROFILE% itd.
+
+ChomikDatabase=%LOCALAPPDATA%\CHOMIK\ChomikDatabase.accdb
+BoberDatabase=BoberDatabase.accdb

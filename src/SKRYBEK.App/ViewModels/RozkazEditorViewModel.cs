@@ -1,16 +1,17 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using System.Windows;
+using SKRYBEK.App.Helpers;
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
+using SKRYBEK.Services.Logging;
 
 namespace SKRYBEK.App.ViewModels;
 
 public sealed partial class RozkazEditorViewModel : ObservableObject
 {
     private readonly RozkazDzienny _rozkaz;
-    private readonly List<Samochod> _samochody;
+    private List<Samochod> _samochody;
     private readonly SessionInfo _session;
     private readonly bool _isNew;
 
@@ -27,14 +28,16 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
 
     // ── Personel ──────────────────────────────────────────────────────────────
-    [ObservableProperty] private List<Funkcjonariusz> _wszystkieOsoby = [];
-    [ObservableProperty] private List<Funkcjonariusz> _przefiltrowane = [];
+    public ObservableCollection<Funkcjonariusz> WszystkieOsoby { get; } = [];
+    public ObservableCollection<Funkcjonariusz> Przefiltrowane { get; } = [];
     [ObservableProperty] private bool _filterKierowcaC;
     [ObservableProperty] private bool _filterKierowcaCE;
     [ObservableProperty] private bool _filterNurek;
     [ObservableProperty] private bool _filterKPP;
     [ObservableProperty] private string _filterFunkcja = string.Empty;
     [ObservableProperty] private List<string> _dostepneFunkcje = [];
+    [ObservableProperty] private int _liczbaDostepnych;
+    [ObservableProperty] private string _personelInfo = string.Empty;
 
     // ── Sekcje ────────────────────────────────────────────────────────────────
     public ObservableCollection<PozycjaSluzbyViewModel> Sluzba { get; } = [];
@@ -64,9 +67,17 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         NrJrg        = nrJrg;
         IsReadOnly   = session.IsReadOnly;
 
-        WszystkieOsoby    = personel;
-        Przefiltrowane    = personel;
-        DostepneFunkcje   = App.Services.Personnel.GetDostepneFunkcje(personel);
+        foreach (var osoba in personel)
+        {
+            WszystkieOsoby.Add(osoba);
+            Przefiltrowane.Add(osoba);
+        }
+
+        DostepneFunkcje = App.Services.Personnel.GetDostepneFunkcje(personel);
+        LiczbaDostepnych = personel.Count;
+        PersonelInfo = personel.Count == 0
+            ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
+            : $"{personel.Count} os. dostępnych na {rozkaz.Data:dd.MM.yyyy}";
 
         // SŁUŻBA
         foreach (var p in rozkaz.Sluzba)
@@ -76,7 +87,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         foreach (var sam in samochody)
         {
             var pozycjeModelu = rozkaz.PodzialBojowy.Where(p => p.SamochodId == sam.Id).ToList();
-            PodzialBojowy.Add(new SamochodViewModel(sam, pozycjeModelu, personel));
+            PodzialBojowy.Add(new SamochodViewModel(sam, pozycjeModelu, personel, this));
         }
 
         // RATOWNICY MEDYCZNI
@@ -94,6 +105,60 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
     }
 
+    /// <summary>Odświeża personel, pojazdy i listy po zamknięciu okna ustawień.</summary>
+    public void OdswiezPoZamknieciuUstawien(List<Samochod> samochody, List<Funkcjonariusz> personel, string nrJrg)
+    {
+        BuildModelFromViewModels();
+
+        _samochody = samochody;
+
+        WszystkieOsoby.Clear();
+        foreach (var osoba in personel)
+            WszystkieOsoby.Add(osoba);
+
+        ApplyFilter();
+        DostepneFunkcje = App.Services.Personnel.GetDostepneFunkcje(personel);
+        LiczbaDostepnych = Przefiltrowane.Count;
+        PersonelInfo = personel.Count == 0
+            ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
+            : $"{personel.Count} os. dostępnych na {Data:dd.MM.yyyy}";
+        NrJrg = nrJrg;
+
+        foreach (var pozycja in Sluzba)
+        {
+            var tekst = pozycja.TekstOsoby;
+            var match = Helpers.PersonelSuggestFilter.ZnajdzDokladnie(personel, tekst);
+            pozycja.TekstOsoby = match?.StopienINazwisko ?? tekst;
+        }
+
+        var istniejace = _rozkaz.PodzialBojowy.ToDictionary(p => (p.SamochodId, p.Pozycja));
+        _rozkaz.PodzialBojowy.Clear();
+        foreach (var sam in samochody)
+        {
+            for (int poz = 1; poz <= sam.LiczbaPozycji; poz++)
+            {
+                if (istniejace.TryGetValue((sam.Id, poz), out var stara))
+                {
+                    _rozkaz.PodzialBojowy.Add(stara);
+                    continue;
+                }
+
+                _rozkaz.PodzialBojowy.Add(new PozycjaSamochodu
+                {
+                    SamochodId = sam.Id,
+                    Pozycja    = poz
+                });
+            }
+        }
+
+        PodzialBojowy.Clear();
+        foreach (var sam in samochody)
+        {
+            var pozycjeModelu = _rozkaz.PodzialBojowy.Where(p => p.SamochodId == sam.Id).ToList();
+            PodzialBojowy.Add(new SamochodViewModel(sam, pozycjeModelu, personel, this));
+        }
+    }
+
     // ── Filtrowanie personelu ─────────────────────────────────────────────────
 
     partial void OnFilterKierowcaCChanged(bool value) => ApplyFilter();
@@ -104,13 +169,19 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        Przefiltrowane = App.Services.Personnel.FiltrujWgKryteriow(
+        var filtered = App.Services.Personnel.FiltrujWgKryteriow(
             WszystkieOsoby,
             FilterKierowcaC,
             FilterKierowcaCE,
             FilterNurek,
             FilterKPP,
             string.IsNullOrEmpty(FilterFunkcja) ? null : FilterFunkcja);
+
+        Przefiltrowane.Clear();
+        foreach (var osoba in filtered)
+            Przefiltrowane.Add(osoba);
+
+        LiczbaDostepnych = Przefiltrowane.Count;
     }
 
     // ── Zapis ─────────────────────────────────────────────────────────────────
@@ -123,14 +194,16 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         try
         {
             BuildModelFromViewModels();
-            var id = await App.Services.Rozkaz.ZapiszAsync(_rozkaz);
+            var id = await App.Services.Rozkaz.ZapiszAsync(_rozkaz, WszystkieOsoby.ToList());
             StatusMessage = $"Zapisano rozkaz Nr {_rozkaz.NumerFormatowany}";
             Saved?.Invoke(this, id);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Błąd zapisu: {ex.Message}";
-            MessageBox.Show(ex.Message, "Błąd zapisu", MessageBoxButton.OK, MessageBoxImage.Error);
+            var msg = ex.Message;
+            SkrybekLog.Error("Błąd zapisu rozkazu", ex);
+            StatusMessage = $"Błąd zapisu: {msg}";
+            SkrybekMessageBox.ShowError(msg, "Błąd zapisu");
         }
         finally
         {
@@ -151,7 +224,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Błąd eksportu:\n{ex.Message}", "Błąd eksportu", MessageBoxButton.OK, MessageBoxImage.Error);
+            SkrybekMessageBox.ShowError($"Błąd eksportu:\n{ex.Message}", "Błąd eksportu");
         }
     }
 
@@ -163,25 +236,38 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         FilterNurek      = false;
         FilterKPP        = false;
         FilterFunkcja    = string.Empty;
-        Przefiltrowane   = WszystkieOsoby;
+        Przefiltrowane.Clear();
+        foreach (var osoba in WszystkieOsoby)
+            Przefiltrowane.Add(osoba);
     }
 
     // ── Walidacja konfliktu pojazd ─────────────────────────────────────────────
 
-    public bool SprawdzKonfliktzPodstawowym(int funkcjonariuszId, int samochodId)
+    /// <summary>
+    /// Zwraca true, gdy osoba jest już na innym pojeździe podstawowym
+    /// (przypisanie do docelowego pojazdu podstawowego byłoby konfliktem).
+    /// </summary>
+    public bool CzyKonfliktPodstawowy(int funkcjonariuszId, int docelowySamochodId)
     {
-        var samochod = _samochody.FirstOrDefault(s => s.Id == samochodId);
-        if (samochod?.CzyPodstawowy != true) return false;
+        var docelowy = _samochody.FirstOrDefault(s => s.Id == docelowySamochodId);
+        if (docelowy?.CzyPodstawowy != true) return false;
 
-        var tymczasowy = BuildModelFromViewModels();
-        return !Services.Rozkaz.RozkazService.MoznaAssignowacDoPodstawowego(
-            tymczasowy, funkcjonariuszId, samochodId, _samochody);
+        var innePodstawowe = _samochody
+            .Where(s => s.CzyPodstawowy && s.Id != docelowySamochodId)
+            .Select(s => s.Id)
+            .ToHashSet();
+
+        return PodzialBojowy
+            .Where(s => innePodstawowe.Contains(s.Samochod.Id))
+            .SelectMany(s => s.Pozycje)
+            .Any(p => p.WybranaOsoba?.Id == funkcjonariuszId);
     }
 
     private RozkazDzienny BuildModelFromViewModels()
     {
         _rozkaz.NumerRozkazu = NumerRozkazu;
         _rozkaz.Data         = Data;
+        _rozkaz.Rok          = Data.Year;
         _rozkaz.Zajecia      = Zajecia;
         _rozkaz.Uwagi        = Uwagi;
 

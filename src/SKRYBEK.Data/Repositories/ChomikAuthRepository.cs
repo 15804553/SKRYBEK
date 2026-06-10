@@ -84,7 +84,7 @@ public sealed class ChomikAuthRepository
         1 => UserRole.Zmiana1,
         2 => UserRole.Zmiana2,
         3 => UserRole.Zmiana3,
-        4 => UserRole.Zmiana3,   // Zmiana 4 → traktujemy jak Zmiana 3 (brak w SKRYBEK)
+        4 => null,               // Zmiana 4 — poza zakresem SKRYBEK
         5 => UserRole.DCAJRG,
         6 => UserRole.DCAJRG,    // Administrator
         _ => null

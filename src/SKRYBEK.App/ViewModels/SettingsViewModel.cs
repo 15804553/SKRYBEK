@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using System.Windows;
+using SKRYBEK.App.Helpers;
 using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
 
@@ -20,11 +20,15 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public ObservableCollection<Samochod> Samochody { get; } = [];
     public ObservableCollection<UserAccount> Uzytkownicy { get; } = [];
+    public Array TypySamochodow { get; } = Enum.GetValues<TypSamochodu>();
 
     [ObservableProperty] private Samochod? _wybranysamochod;
     [ObservableProperty] private UserAccount? _wybranyUzytkownik;
 
     public bool CanEditAll => _session.CanEditAll;
+
+    /// <summary>Edycja listy pojazdów — dostępna dla zmian i DCA; wyłączona tylko dla PA (podgląd).</summary>
+    public bool CanEditPojazdy => !_session.IsReadOnly;
 
     public SettingsViewModel(SessionInfo session)
     {
@@ -37,8 +41,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            SciezkaBoberBazy  = await App.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.SciezkaBoberBazy);
-            SciezkaChomikBazy = await App.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.SciezkaChomikBazy);
+            SciezkaBoberBazy  = App.Services.BoberDb.DatabasePath;
+            SciezkaChomikBazy = App.Services.ChomikDb.DatabasePath;
             NrJrg             = await App.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.NrJRG, "4");
 
             Samochody.Clear();
@@ -63,14 +67,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            await App.Services.UstawieniaRepo.SetAsync(UstawieniaKlucze.SciezkaBoberBazy, SciezkaBoberBazy);
-            await App.Services.UstawieniaRepo.SetAsync(UstawieniaKlucze.SciezkaChomikBazy, SciezkaChomikBazy);
             await App.Services.UstawieniaRepo.SetAsync(UstawieniaKlucze.NrJRG, NrJrg);
 
-            App.Services.UpdateBoberPath(SciezkaBoberBazy);
-            App.Services.UpdateChomikPath(SciezkaChomikBazy);
-
-            StatusMessage = "Ustawienia zapisane.";
+            StatusMessage = "Ustawienia zapisane. Ścieżki baz edytuj w DatabasePatch.txt i uruchom program ponownie.";
         }
         catch (Exception ex)
         {
@@ -119,12 +118,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task UsunSamochodAsync(Samochod s)
     {
-        var result = MessageBox.Show(
+        if (!SkrybekMessageBox.Confirm(
             $"Czy usunąć pojazd '{s.Nazwa}'?",
             "Potwierdź usunięcie",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (result != MessageBoxResult.Yes) return;
+            SkrybekMessageKind.Warning)) return;
         await App.Services.SamochodyRepo.DeleteAsync(s.Id);
         await LoadAsync();
     }
@@ -161,11 +158,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     private static void ShowChomikInfo() =>
-        System.Windows.MessageBox.Show(
+        SkrybekMessageBox.ShowInfo(
             "Użytkownicy i hasła zarządzane są przez aplikację CHOMIK.\nWprowadź zmiany w CHOMIK i uruchom SKRYBEK ponownie.",
-            "Zarządzanie użytkownikami",
-            System.Windows.MessageBoxButton.OK,
-            System.Windows.MessageBoxImage.Information);
+            "Zarządzanie użytkownikami");
 
     // ── Backup ────────────────────────────────────────────────────────────────
 

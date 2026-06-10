@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using SKRYBEK.App.Helpers;
 using SKRYBEK.App.ViewModels;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Services.Logging;
@@ -47,12 +48,11 @@ public partial class MainWindow : Window
     {
         if (sender is Button { Tag: RozkazDzienny rozkaz })
         {
-            var result = MessageBox.Show(
+            if (SkrybekMessageBox.Confirm(
                 $"Czy na pewno usunąć rozkaz Nr {rozkaz.NumerFormatowany} z dnia {rozkaz.DataFormatowana}?",
                 "Usuń rozkaz",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
+                SkrybekMessageKind.Warning,
+                this))
                 _ = _vm.UsunRozkazCommand.ExecuteAsync(rozkaz);
         }
     }
@@ -63,12 +63,12 @@ public partial class MainWindow : Window
             _ = _vm.ZmienRokCommand.ExecuteAsync(rok);
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e)
+    private async void Settings_Click(object sender, RoutedEventArgs e)
     {
         var win = new SettingsWindow(_vm.Session!);
         win.Owner = this;
         win.ShowDialog();
-        _ = _vm.LoadAsync();
+        await _vm.OdswiezPoUstawieniachAsync();
     }
 
     private void Logout_Click(object sender, RoutedEventArgs e)
