@@ -1,3 +1,4 @@
+using SKRYBEK.Core.Enums;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Data.Grafik;
 using SKRYBEK.Data.Repositories;
@@ -26,6 +27,16 @@ public sealed class PersonnelService
 
         var lista = await _repo.GetDostepniWDniuAsync(data, nrZmiany, wszyscy);
         SkrybekLog.Info($"Personel dostępny na {data:yyyy-MM-dd}: {lista.Count} osób");
+
+        foreach (var f in lista)
+        {
+            var kierowca = f.MaUprawnieniaKierowca;
+            SkrybekLog.Debug(
+                $"  [{f.Id}] {f.StopienINazwisko} | StanowiskoId={f.StanowiskoId} " +
+                $"| Uprawnienia=[{string.Join(",", f.IdUprawnien)}] " +
+                $"| Kierowca={kierowca} | Funkcje=[{string.Join(",", f.NazwyFunkcjiDodatkowych)}]");
+        }
+
         return lista;
     }
 
@@ -66,4 +77,37 @@ public sealed class PersonnelService
             .OrderBy(x => x)
             .ToList();
     }
+
+    /// <summary>
+    /// Pobiera nieobecnych w danym dniu z BOBER i zwraca jako listę NieobecnyWSluzbie
+    /// wstępnie wypełnionych danymi z CHOMIK. Zwraca pustą listę gdy BOBER niedostępny.
+    /// </summary>
+    public async Task<List<NieobecnyWSluzbie>> GetNieobecniWDniuAsync(
+        DateOnly data, int nrZmiany, IReadOnlyList<Funkcjonariusz> wszyscy)
+    {
+        var nieobecniZBober = await _repo.PobierzNieobecnychZTypemAsync(data, nrZmiany);
+        if (nieobecniZBober.Count == 0) return [];
+
+        var personelPoId = wszyscy.ToDictionary(f => f.Id);
+        var wynik = new List<NieobecnyWSluzbie>();
+
+        foreach (var (fid, typ) in nieobecniZBober)
+        {
+            personelPoId.TryGetValue(fid, out var osoba);
+            wynik.Add(new NieobecnyWSluzbie
+            {
+                FunkcjonariuszId = fid,
+                Nazwisko = osoba is not null
+                    ? $"{osoba.Stopien} {osoba.Nazwisko}".Trim()
+                    : $"ID:{fid}",
+                TypNieobecnosci = typ
+            });
+        }
+
+        SkrybekLog.Info($"BOBER — nieobecni na {data:yyyy-MM-dd}: {wynik.Count} osób");
+        return wynik;
+    }
+
+    public Task<List<(int Id, string Nazwa)>> GetTypyUprawnienAsync()
+        => _repo.GetTypyUprawnienAsync();
 }

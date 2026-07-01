@@ -1,7 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
-using SKRYBEK.App.Helpers;
-using SKRYBEK.App.ViewModels;
 using SKRYBEK.Core.Models;
 using SKRYBEK.Services.Logging;
 
@@ -9,80 +6,28 @@ namespace SKRYBEK.App.Views;
 
 public partial class MainWindow : Window
 {
-    private MainViewModel _vm = null!;
-
     public MainWindow()
     {
         InitializeComponent();
+        MainView.LogoutRequested += OnLogoutRequested;
     }
 
     public async Task InitializeAsync(SessionInfo session)
     {
-        SkrybekLog.Info($"InitializeAsync: sesja={session.Login}, rola={session.NazwaZmiany}");
-
-        _vm = new MainViewModel(session);
-        DataContext = _vm;
-
-        UserLabel.Text = $"{session.Login}  |  {session.NazwaZmiany}";
-        SkrybekLog.Info("InitializeAsync: UserLabel ustawiony");
-
-        // Wypełnij combo lat — tymczasowo odłącz handler żeby uniknąć podwójnego Load
-        RokCombo.SelectionChanged -= RokCombo_SelectionChanged;
-        var lata = Enumerable.Range(DateTime.Today.Year - 2, 5).Reverse().ToList();
-        RokCombo.ItemsSource = lata;
-        RokCombo.SelectedItem = DateTime.Today.Year;
-        RokCombo.SelectionChanged += RokCombo_SelectionChanged;
-        SkrybekLog.Info("InitializeAsync: RokCombo ustawiony");
-
-        await _vm.LoadAsync();
-        SkrybekLog.Info("InitializeAsync: zakończono ładowanie rozkazów");
+        SkrybekLog.Info($"Otwieranie głównego okna dla: {session.Login}");
+        await MainView.InitializeAsync(session);
     }
 
-    private void RozkazyList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnLogoutRequested(object? sender, EventArgs e)
     {
-        if (RozkazyList.SelectedItem is RozkazDzienny rozkaz)
-            _ = _vm.OtworzRozkazCommand.ExecuteAsync(rozkaz);
-    }
-
-    private void DeleteRozkaz_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: RozkazDzienny rozkaz })
-        {
-            if (SkrybekMessageBox.Confirm(
-                $"Czy na pewno usunąć rozkaz Nr {rozkaz.NumerFormatowany} z dnia {rozkaz.DataFormatowana}?",
-                "Usuń rozkaz",
-                SkrybekMessageKind.Warning,
-                this))
-                _ = _vm.UsunRozkazCommand.ExecuteAsync(rozkaz);
-        }
-    }
-
-    private void RokCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (RokCombo.SelectedItem is int rok && _vm is not null)
-            _ = _vm.ZmienRokCommand.ExecuteAsync(rok);
-    }
-
-    private async void Settings_Click(object sender, RoutedEventArgs e)
-    {
-        var win = new SettingsWindow(_vm.Session!);
-        win.Owner = this;
-        win.ShowDialog();
-        await _vm.OdswiezPoUstawieniachAsync();
-    }
-
-    private void Logout_Click(object sender, RoutedEventArgs e)
-    {
-        _vm.Logout();
-
-        Application.Current.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+        Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var login = new LoginWindow();
         var ok = login.ShowDialog();
-        Application.Current.ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose;
+        Application.Current.ShutdownMode = ShutdownMode.OnMainWindowClose;
 
         if (ok == true && login.Session is not null)
         {
-            _ = InitializeAsync(login.Session);
+            _ = MainView.InitializeAsync(login.Session);
         }
         else
         {

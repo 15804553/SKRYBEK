@@ -12,6 +12,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 {
     private readonly RozkazDzienny _rozkaz;
     private List<Samochod> _samochody;
+    private List<Funkcjonariusz> _wszyscyZmiany;
     private readonly SessionInfo _session;
     private readonly bool _isNew;
 
@@ -19,13 +20,57 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     // ── Nagłówek ──────────────────────────────────────────────────────────────
     [ObservableProperty] private int _numerRozkazu;
-    [ObservableProperty] private DateOnly _data;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DataDateTime))]
+    private DateOnly _data;
+
     [ObservableProperty] private string _zajecia = string.Empty;
     [ObservableProperty] private string _uwagi = string.Empty;
     [ObservableProperty] private string _nrJrg = "4";
-    [ObservableProperty] private bool _isReadOnly;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MozeAkceptowac))]
+    [NotifyPropertyChangedFor(nameof(MozeOdblokować))]
+    [NotifyPropertyChangedFor(nameof(CzyZatwierdzony))]
+    private bool _isReadOnly;
+
     [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private string _statusMessage = string.Empty;
+
+    public bool IsNew => _isNew;
+
+    // ── Akceptacja rozkazu (wymaganie 3) ──────────────────────────────────────
+    public bool CzyZatwierdzony => _rozkaz.Status == StatusRozkazu.Zatwierdzony;
+
+    public bool MozeAkceptowac =>
+        _session.CanEditAll && _rozkaz.Status == StatusRozkazu.Roboczy && _rozkaz.Id > 0;
+
+    public bool MozeOdblokować =>
+        _session.CanEditAll && _rozkaz.Status == StatusRozkazu.Zatwierdzony;
+
+    public bool CzyKontoPa { get; }
+
+    public string LoginSesji { get; } = string.Empty;
+
+    public bool PokazPanelPersonelu => !CzyKontoPa;
+
+    public bool PokazPrzyciskZatwierdz => MozeAkceptowac && !CzyKontoPa;
+
+    public bool PokazPrzyciskOdblokuj => MozeOdblokować && !CzyKontoPa;
+
+    public bool PokazPrzyciskZapisz => !CzyKontoPa;
+
+    // ── Wybór daty (wymaganie 5) — DatePicker binduje się przez DateTime? ─────
+    public DateTime? DataDateTime
+    {
+        get => Data.ToDateTime(TimeOnly.MinValue);
+        set
+        {
+            if (value.HasValue)
+                Data = DateOnly.FromDateTime(value.Value);
+        }
+    }
 
     // ── Personel ──────────────────────────────────────────────────────────────
     public ObservableCollection<Funkcjonariusz> WszystkieOsoby { get; } = [];
@@ -51,21 +96,29 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         RozkazDzienny rozkaz,
         List<Samochod> samochody,
         List<Funkcjonariusz> personel,
+        List<Funkcjonariusz> wszyscyZmiany,
         string nrJrg,
         SessionInfo session,
         bool isNew)
     {
-        _rozkaz   = rozkaz;
-        _samochody = samochody;
-        _session   = session;
-        _isNew     = isNew;
+        _rozkaz        = rozkaz;
+        _samochody     = samochody;
+        _wszyscyZmiany = wszyscyZmiany;
+        _session       = session;
+        _isNew         = isNew;
+
+        session.NormalizePaFlags();
+        CzyKontoPa = session.IsPaUser;
+        LoginSesji = session.Login;
+
+        SkrybekLog.Info($"RozkazEditorViewModel: login={LoginSesji}, CzyKontoPa={CzyKontoPa}");
 
         NumerRozkazu = rozkaz.NumerRozkazu;
-        Data         = rozkaz.Data;
+        _data        = rozkaz.Data;
         Zajecia      = rozkaz.Zajecia;
         Uwagi        = rozkaz.Uwagi;
         NrJrg        = nrJrg;
-        IsReadOnly   = session.IsReadOnly;
+        IsReadOnly   = session.IsReadOnly || rozkaz.Status == StatusRozkazu.Zatwierdzony;
 
         foreach (var osoba in personel)
         {
@@ -73,7 +126,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             Przefiltrowane.Add(osoba);
         }
 
-        DostepneFunkcje = App.Services.Personnel.GetDostepneFunkcje(personel);
+        DostepneFunkcje = ServiceProvider.Services.Personnel.GetDostepneFunkcje(personel);
         LiczbaDostepnych = personel.Count;
         PersonelInfo = personel.Count == 0
             ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
@@ -81,7 +134,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
         // SŁUŻBA
         foreach (var p in rozkaz.Sluzba)
-            Sluzba.Add(new PozycjaSluzbyViewModel(p, personel));
+            Sluzba.Add(new PozycjaSluzbyViewModel(p, personel, this));
 
         // PODZIAŁ BOJOWY
         foreach (var sam in samochody)
@@ -105,30 +158,140 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         }
     }
 
+    // ── Zmiana daty (wymaganie 5) — odświeża personel ────────────────────────
+    // NumerRozkazu NIE jest aktualizowany automatycznie przy zmianie daty,
+    // gdyż numer wskazuje dzień roku kiedy rozkaz był pisany (dziś), nie dzień służby.
+    partial void OnDataChanged(DateOnly value)
+    {
+        _ = OdswiezPersonelNaDateAsync(value);
+    }
+
+    private async Task OdswiezPersonelNaDateAsync(DateOnly data)
+    {
+        try
+        {
+            var nrZmiany = _rozkaz.ZmianaId > 0 ? _rozkaz.ZmianaId
+                : (_session.NumerZmiany > 0 ? _session.NumerZmiany : 1);
+
+            var nowyPersonel = await ServiceProvider.Services.Personnel.GetDostepniAsync(data, nrZmiany);
+
+            WszystkieOsoby.Clear();
+            foreach (var osoba in nowyPersonel)
+                WszystkieOsoby.Add(osoba);
+
+            ApplyFilter();
+            DostepneFunkcje = ServiceProvider.Services.Personnel.GetDostepneFunkcje(nowyPersonel);
+            LiczbaDostepnych = Przefiltrowane.Count;
+            PersonelInfo = nowyPersonel.Count == 0
+                ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
+                : $"{nowyPersonel.Count} os. dostępnych na {data:dd.MM.yyyy}";
+
+            foreach (var samVm in PodzialBojowy)
+                samVm.OdswiezWszystkiePozycje();
+
+            // Stanowiska używają własnej listy _personel — musi być zaktualizowana
+            // (inaczej po zmianie daty stanowiska widziałyby personel ze starej daty).
+            foreach (var pozVm in Sluzba)
+                pozVm.OdswiezPersonel(nowyPersonel);
+
+            // Przeładuj sekcje nieobecnych z BOBER na podstawie GrafikWpisy
+            await OdswiezNieobecnychZBoberaAsync(data, nrZmiany);
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error($"Błąd odświeżania personelu na {data}", ex);
+        }
+    }
+
+    private async Task OdswiezNieobecnychZBoberaAsync(DateOnly data, int nrZmiany)
+    {
+        try
+        {
+            var nieobecni = await ServiceProvider.Services.Personnel.GetNieobecniWDniuAsync(
+                data, nrZmiany, _wszyscyZmiany);
+
+            foreach (var grp in NieobecniGrupy)
+            {
+                var dlaTypu = nieobecni.Where(n => n.TypNieobecnosci == grp.Typ).ToList();
+                grp.ZaladujZBobera(dlaTypu);
+            }
+        }
+        catch (Exception ex)
+        {
+            SkrybekLog.Error($"Błąd przeładowania nieobecnych z BOBER na {data}", ex);
+        }
+    }
+
+    // ── Akceptacja / odblokowanie (wymaganie 3) ───────────────────────────────
+
+    [RelayCommand]
+    private async Task AkceptujRozkazAsync()
+    {
+        if (!_session.CanEditAll || _rozkaz.Id == 0) return;
+
+        BuildModelFromViewModels();
+        await ServiceProvider.Services.Rozkaz.ZapiszAsync(_rozkaz, WszystkieOsoby.ToList());
+        await ServiceProvider.Services.Rozkaz.UpdateStatusAsync(_rozkaz.Id, StatusRozkazu.Zatwierdzony);
+
+        _rozkaz.Status = StatusRozkazu.Zatwierdzony;
+        IsReadOnly = true;
+        OnPropertyChanged(nameof(CzyZatwierdzony));
+        OnPropertyChanged(nameof(MozeAkceptowac));
+        OnPropertyChanged(nameof(MozeOdblokować));
+        OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
+        OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
+        StatusMessage = "Rozkaz zatwierdzony — edycja zablokowana.";
+    }
+
+    [RelayCommand]
+    private async Task OdblokujRozkazAsync()
+    {
+        if (!_session.CanEditAll) return;
+
+        await ServiceProvider.Services.Rozkaz.UpdateStatusAsync(_rozkaz.Id, StatusRozkazu.Roboczy);
+
+        _rozkaz.Status = StatusRozkazu.Roboczy;
+        IsReadOnly = _session.IsReadOnly;
+        OnPropertyChanged(nameof(CzyZatwierdzony));
+        OnPropertyChanged(nameof(MozeAkceptowac));
+        OnPropertyChanged(nameof(MozeOdblokować));
+        OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
+        OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
+        StatusMessage = "Rozkaz odblokowany — można edytować.";
+    }
+
     /// <summary>Odświeża personel, pojazdy i listy po zamknięciu okna ustawień.</summary>
-    public void OdswiezPoZamknieciuUstawien(List<Samochod> samochody, List<Funkcjonariusz> personel, string nrJrg)
+    public void OdswiezPoZamknieciuUstawien(
+        List<Samochod> samochody,
+        List<Funkcjonariusz> personel,
+        List<Funkcjonariusz> wszyscyZmiany,
+        string nrJrg)
     {
         BuildModelFromViewModels();
 
-        _samochody = samochody;
+        _samochody     = samochody;
+        _wszyscyZmiany = wszyscyZmiany;
 
         WszystkieOsoby.Clear();
         foreach (var osoba in personel)
             WszystkieOsoby.Add(osoba);
 
         ApplyFilter();
-        DostepneFunkcje = App.Services.Personnel.GetDostepneFunkcje(personel);
+        DostepneFunkcje = ServiceProvider.Services.Personnel.GetDostepneFunkcje(personel);
         LiczbaDostepnych = Przefiltrowane.Count;
         PersonelInfo = personel.Count == 0
             ? "Brak osób w pracy w tym dniu — sprawdź grafik BOBER."
             : $"{personel.Count} os. dostępnych na {Data:dd.MM.yyyy}";
         NrJrg = nrJrg;
 
+        // Zaktualizuj _personel w stanowiskach i przebuduj listy z nową datą/personelem.
         foreach (var pozycja in Sluzba)
         {
             var tekst = pozycja.TekstOsoby;
             var match = Helpers.PersonelSuggestFilter.ZnajdzDokladnie(personel, tekst);
-            pozycja.TekstOsoby = match?.StopienINazwisko ?? tekst;
+            pozycja.OdswiezPersonel(personel);
+            if (match is not null)
+                pozycja.TekstOsoby = match.StopienINazwisko;
         }
 
         var istniejace = _rozkaz.PodzialBojowy.ToDictionary(p => (p.SamochodId, p.Pozycja));
@@ -169,7 +332,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        var filtered = App.Services.Personnel.FiltrujWgKryteriow(
+        var filtered = ServiceProvider.Services.Personnel.FiltrujWgKryteriow(
             WszystkieOsoby,
             FilterKierowcaC,
             FilterKierowcaCE,
@@ -194,7 +357,14 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         try
         {
             BuildModelFromViewModels();
-            var id = await App.Services.Rozkaz.ZapiszAsync(_rozkaz, WszystkieOsoby.ToList());
+            var id = await ServiceProvider.Services.Rozkaz.ZapiszAsync(_rozkaz, WszystkieOsoby.ToList());
+
+            // Po pierwszym zapisie nowego rozkazu odblokuj przycisk Akceptuj
+            OnPropertyChanged(nameof(MozeAkceptowac));
+            OnPropertyChanged(nameof(MozeOdblokować));
+            OnPropertyChanged(nameof(PokazPrzyciskZatwierdz));
+            OnPropertyChanged(nameof(PokazPrzyciskOdblokuj));
+
             StatusMessage = $"Zapisano rozkaz Nr {_rozkaz.NumerFormatowany}";
             Saved?.Invoke(this, id);
         }
@@ -218,7 +388,7 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
         try
         {
             var outputDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Eksport");
-            var path = App.Services.WordExport.ExportRozkaz(_rozkaz, _samochody, NrJrg, outputDir);
+            var path = ServiceProvider.Services.WordExport.ExportRozkaz(_rozkaz, _samochody, NrJrg, outputDir);
             StatusMessage = $"Wyeksportowano: {System.IO.Path.GetFileName(path)}";
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }
@@ -241,26 +411,38 @@ public sealed partial class RozkazEditorViewModel : ObservableObject
             Przefiltrowane.Add(osoba);
     }
 
-    // ── Walidacja konfliktu pojazd ─────────────────────────────────────────────
+    // ── Walidacja konfliktu pojazd podstawowy ────────────────────────────────
 
     /// <summary>
-    /// Zwraca true, gdy osoba jest już na innym pojeździe podstawowym
-    /// (przypisanie do docelowego pojazdu podstawowego byłoby konfliktem).
+    /// Zwraca true, gdy osoba jest już przypisana na innym miejscu pojazdu podstawowego
+    /// (w tym na innym pojeździe podstawowym). Jedna osoba może siedzieć tylko na jednym
+    /// samochodzie oznaczonym jako podstawowy.
     /// </summary>
-    public bool CzyKonfliktPodstawowy(int funkcjonariuszId, int docelowySamochodId)
+    public bool CzyKonfliktPodstawowy(int funkcjonariuszId, int docelowySamochodId, int docelowaPozycja)
     {
         var docelowy = _samochody.FirstOrDefault(s => s.Id == docelowySamochodId);
         if (docelowy?.CzyPodstawowy != true) return false;
 
-        var innePodstawowe = _samochody
-            .Where(s => s.CzyPodstawowy && s.Id != docelowySamochodId)
-            .Select(s => s.Id)
-            .ToHashSet();
+        foreach (var samVm in PodzialBojowy.Where(s => s.CzyPodstawowy))
+        {
+            foreach (var poz in samVm.Pozycje)
+            {
+                if (poz.WybranaOsoba?.Id != funkcjonariuszId) continue;
+                if (samVm.Samochod.Id == docelowySamochodId && poz.Pozycja == docelowaPozycja)
+                    continue;
 
-        return PodzialBojowy
-            .Where(s => innePodstawowe.Contains(s.Samochod.Id))
-            .SelectMany(s => s.Pozycje)
-            .Any(p => p.WybranaOsoba?.Id == funkcjonariuszId);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Odświeża listy comboboxów na wszystkich pojazdach podstawowych.</summary>
+    public void OdswiezPozycjePodstawowe()
+    {
+        foreach (var samVm in PodzialBojowy.Where(s => s.CzyPodstawowy))
+            samVm.OdswiezWszystkiePozycje();
     }
 
     private RozkazDzienny BuildModelFromViewModels()

@@ -83,15 +83,18 @@ public sealed class AuthService
 
         SkrybekLog.Info($"Zalogowano: {user.Login} ({user.NazwaZmiany})");
 
-        return new SessionInfo
+        var session = new SessionInfo
         {
             UserId      = user.Id,
             Login       = user.Login,
             NazwaZmiany = user.NazwaZmiany,
             NumerZmiany = user.NumerZmiany,
             IsReadOnly  = user.IsReadOnly,
-            CanEditAll  = user.Role == UserRole.DCAJRG
+            CanEditAll  = user.Role == UserRole.DCAJRG,
+            IsPaAccount = user.Role == UserRole.PA
         };
+        session.NormalizePaFlags();
+        return session;
     }
 
     /// <summary>CHOMIK: Base64(SHA256(UTF8(password + salt))). Obsługuje też legacy hex z lokalnej bazy SKRYBEK.</summary>

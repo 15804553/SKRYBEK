@@ -10,6 +10,10 @@
     <conv:SamochodTypToBorderBrushConverter x:Key="SamochodTypToBorderBrushConverter" />
     <conv:TypSamochoduToEtykietaConverter x:Key="TypSamochoduToEtykietaConverter" />
     <conv:PozycjaOznaczenieBrushConverter x:Key="PozycjaOznaczenieBrushConverter" />
+    <conv:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" />
+    <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+    <conv:FunkcjonariuszBoberKolorConverter x:Key="FunkcjonariuszBoberKolorConverter" />
+    <conv:FunkcjonariuszBoberTloConverter x:Key="FunkcjonariuszBoberTloConverter" />
 
     <!-- Paleta grafitowa (grafit + szarości) -->
     <Color x:Key="BackgroundColor">#1E1E1E</Color>
@@ -264,11 +268,116 @@
         </Setter>
     </Style>
 
+    <!-- DatePickerTextBox — wewnętrzna kontrolka edytora daty (override tła na ciemny) -->
+    <Style TargetType="{x:Type DatePickerTextBox}">
+        <Setter Property="Background" Value="{StaticResource SurfaceVariantBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="22" />
+        <Setter Property="CaretBrush" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type DatePickerTextBox}">
+                    <Border x:Name="border"
+                            UseLayoutRounding="True"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      Margin="6,0" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- DatePicker ciemny — używany w edytorze rozkazu -->
+    <Style x:Key="DarkDatePicker" TargetType="{x:Type DatePicker}">
+        <Setter Property="Background" Value="{StaticResource SurfaceVariantBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type DatePicker}">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="26" />
+                            </Grid.ColumnDefinitions>
+                            <DatePickerTextBox x:Name="PART_TextBox"
+                                              Grid.Column="0"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              Background="Transparent"
+                                              Padding="6,0"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Stretch" />
+                            <Button x:Name="PART_Button"
+                                    Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Focusable="False"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="Transparent" Padding="4">
+                                            <Path Data="M0,0 L4,5 L8,0 Z"
+                                                  Fill="{StaticResource ForegroundMutedBrush}"
+                                                  Width="8" Height="5"
+                                                  Stretch="Fill" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   PlacementTarget="{Binding ElementName=border}"
+                                   Placement="Bottom"
+                                   StaysOpen="False" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush"
+                                    Value="{StaticResource ControlHoverBorderBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.6" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ComboBox — wybór z listy lub wpis własny -->
     <Style x:Key="EditableDarkComboBox" TargetType="ComboBox">
         <Setter Property="IsEditable" Value="True" />
         <Setter Property="IsTextSearchEnabled" Value="True" />
         <Setter Property="StaysOpenOnEdit" Value="False" />
+        <!-- Wyłącz auto-synchronizację z CurrentItem kolekcji. Bez tego WPF automatycznie
+             ustawia IsSynchronizedWithCurrentItem=True gdy ItemsSource to ICollectionView
+             (np. ListCollectionView), co powoduje że wszystkie ComboBoxy dostają
+             tę samą pierwszą osobę z listy zamiast pokazywać puste pole. -->
+        <Setter Property="IsSynchronizedWithCurrentItem" Value="False" />
         <Setter Property="Background" Value="{StaticResource SurfaceVariantBrush}" />
         <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -353,8 +462,9 @@
                                     BorderThickness="1"
                                     CornerRadius="3"
                                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                    MaxHeight="200">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    MaxHeight="300">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              CanContentScroll="False">
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>
                             </Border>
@@ -496,6 +606,97 @@
         <Setter Property="CanUserReorderColumns" Value="False" />
         <Setter Property="CanUserSortColumns" Value="False" />
         <Setter Property="EnableRowVirtualization" Value="True" />
+    </Style>
+
+    <!-- ScrollBar — styl używany m.in. przez listę ComboBox -->
+    <Style x:Key="ScrollBarPageButton" TargetType="RepeatButton">
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="thumbBorder"
+                            Background="{StaticResource ForegroundMutedBrush}"
+                            CornerRadius="3"
+                            Margin="2" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="thumbBorder" Property="Background"
+                                    Value="{StaticResource ForegroundBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="thumbBorder" Property="Background"
+                                    Value="{StaticResource AccentLightBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Border Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource ScrollBarPageButton}"
+                                              Command="ScrollBar.PageUpCommand" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource ScrollBarPageButton}"
+                                              Command="ScrollBar.PageDownCommand" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Height" Value="8" />
+                <Setter Property="MinHeight" Value="8" />
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Border Background="{TemplateBinding Background}">
+                                <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource ScrollBarPageButton}"
+                                                      Command="ScrollBar.PageLeftCommand" />
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource ScrollBarPageButton}"
+                                                      Command="ScrollBar.PageRightCommand" />
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- TabItem -->

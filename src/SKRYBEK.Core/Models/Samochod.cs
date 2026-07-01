@@ -12,4 +12,7 @@ public sealed class Samochod
     public bool CzyAktywny { get; set; } = true;
 
     public bool CzyPodstawowy => Typ == TypSamochodu.Podstawowy;
+
+    /// <summary>IDs typów uprawnień z CHOMIK wymaganych na tym pojeździe (np. kurs drabin, kurs nurka).</summary>
+    public List<int> WymaganeUprawnieniaIds { get; set; } = [];
 }

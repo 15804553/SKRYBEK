@@ -24,6 +24,16 @@ public static class PozycjaSamochoduRules
         _ => true
     };
 
+    /// <summary>
+    /// Zwraca true gdy osoba spełnia zarówno wymagania pozycji jak i dodatkowe wymagania pojazdu.
+    /// Służy do oznaczania osób jako "sugerowane" w comboboxach.
+    /// </summary>
+    public static bool CzyOsobaMaSugerowaneKwalifikacje(Funkcjonariusz osoba, int pozycja, Samochod samochod)
+    {
+        if (!CzyOsobaDozwolonaNaPozycji(osoba, pozycja)) return false;
+        return samochod.WymaganeUprawnieniaIds.All(id => osoba.IdUprawnien.Contains(id));
+    }
+
     public static string OpisWymagania(int pozycja) => pozycja switch
     {
         1 => "Miejsce 1.D — dowódca zmiany, zastępca dowódcy zmiany, dowódca zastępu, dowódca sekcji " +

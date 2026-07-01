@@ -16,6 +16,7 @@ public static class SkrybekLog
             .CreateLogger();
     }
 
+    public static void Debug(string msg) => Log.Debug(msg);
     public static void Info(string msg) => Log.Information(msg);
     public static void Warning(string msg) => Log.Warning(msg);
     public static void Error(string msg, Exception? ex = null) => Log.Error(ex, msg);

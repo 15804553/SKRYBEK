@@ -35,7 +35,7 @@ public sealed partial class LoginViewModel : ObservableObject
         try
         {
             SkrybekLog.Info("Ładowanie listy użytkowników z CHOMIK...");
-            var lista = await App.Services.Auth.GetAvailableUsersAsync();
+            var lista = await ServiceProvider.Services.Auth.GetAvailableUsersAsync();
             SkrybekLog.Info($"Załadowano {lista.Count} użytkowników z CHOMIK");
 
             Uzytkownicy.Clear();
@@ -75,7 +75,7 @@ public sealed partial class LoginViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            var session = await App.Services.Auth.LoginAsync(WybranyUzytkownik, haslo);
+            var session = await ServiceProvider.Services.Auth.LoginAsync(WybranyUzytkownik, haslo);
             if (session is null)
             {
                 Blad = HasloWymagane

@@ -79,6 +79,12 @@ internal static class SchemaScripts
             Klucz TEXT(100) NOT NULL PRIMARY KEY,
             Wartosc TEXT(255) NOT NULL
         )
+        """,
+        """
+        CREATE TABLE SamochodWymagania (
+            SamochodId LONG NOT NULL,
+            TypUprawnieniaId INTEGER NOT NULL
+        )
         """
     ];
 }

@@ -1,16 +1,16 @@
 using System.Windows;
-using SKRYBEK.App.ViewModels;
 using SKRYBEK.Core.Models;
 
 namespace SKRYBEK.App.Views;
 
 public partial class SettingsWindow : Window
 {
+    public SkrybekSettingsView SettingsView { get; }
+
     public SettingsWindow(SessionInfo session)
     {
         InitializeComponent();
-        var vm = new SettingsViewModel(session);
-        DataContext = vm;
-        _ = vm.LoadAsync();
+        SettingsView = new SkrybekSettingsView(session);
+        SettingsHost.Content = SettingsView;
     }
 }

@@ -4,16 +4,22 @@
              xmlns:vm="clr-namespace:SKRYBEK.App.ViewModels"
              xmlns:ctrl="clr-namespace:SKRYBEK.App.Views.Controls">
 
-    <Grid>
+    <Grid x:Name="EditorRootGrid">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" />
-            <ColumnDefinition Width="4" />
+            <ColumnDefinition x:Name="PersonelColumn" Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- ═══ PANEL PERSONELU (lewy) ═══ -->
+        <!-- ═══ PANEL PERSONELU (lewy) — widoczność w ApplyAccountMode ═══ -->
+        <Grid x:Name="PersonelPanelHost"
+              Grid.Column="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240" />
+                <ColumnDefinition Width="4" />
+            </Grid.ColumnDefinitions>
+
         <Border Grid.Column="0"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{StaticResource SurfaceVariantBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,0,1,0">
             <Grid>
@@ -77,15 +83,21 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Margin="2,1">
-                                <TextBlock FontWeight="SemiBold" FontSize="12"
-                                           Foreground="{StaticResource ForegroundBrush}"
-                                           Text="{Binding StopienINazwisko}" />
-                                <TextBlock FontSize="10"
-                                           Foreground="{StaticResource ForegroundMutedBrush}"
-                                           Text="{Binding Stanowisko}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
+                            <Border Margin="4,2"
+                                    Padding="6,4"
+                                    CornerRadius="3"
+                                    Background="{Binding Converter={StaticResource FunkcjonariuszBoberTloConverter}}">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" FontSize="12"
+                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszBoberKolorConverter}}"
+                                               Text="{Binding StopienINazwisko}" />
+                                    <TextBlock FontSize="10"
+                                               Opacity="0.85"
+                                               Foreground="{Binding Converter={StaticResource FunkcjonariuszBoberKolorConverter}}"
+                                               Text="{Binding Stanowisko}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -95,9 +107,10 @@
         <!-- Splitter -->
         <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
                       Background="{StaticResource BorderBrush}" ResizeBehavior="PreviousAndNext" />
+        </Grid>
 
         <!-- ═══ OBSZAR EDYTORA (prawy) ═══ -->
-        <ScrollViewer Grid.Column="2"
+        <ScrollViewer Grid.Column="1"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="0,0,4,0">
@@ -125,7 +138,8 @@
                                        VerticalAlignment="Center" />
                             <TextBox Text="{Binding NumerRozkazu, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource DarkTextBox}"
-                                     Width="60" FontWeight="Bold" FontSize="16"
+                                     Width="64" FontWeight="Bold" FontSize="16"
+                                     Padding="6,4"
                                      IsReadOnly="{Binding IsReadOnly}"
                                      VerticalAlignment="Center" />
                             <TextBlock Text="/"
@@ -138,19 +152,50 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Data, StringFormat='na dzień {0:dd.MM.yyyy}'}"
-                                       FontSize="13"
-                                       Foreground="{StaticResource ForegroundMutedBrush}" />
+                        <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="Na dzień:"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <DatePicker SelectedDate="{Binding DataDateTime, UpdateSourceTrigger=PropertyChanged}"
+                                        IsEnabled="{Binding CzyZatwierdzony, Converter={StaticResource InverseBoolConverter}}"
+                                        Style="{StaticResource DarkDatePicker}"
+                                        Width="148"
+                                        Height="34" />
                         </StackPanel>
 
                         <!-- Przyciski akcji -->
-                        <Button Grid.Column="2"
-                                Content="💾  Zapisz"
-                                Style="{StaticResource PrimaryButton}"
-                                Command="{Binding ZapiszCommand}"
-                                IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBoolConverter}}"
-                                Margin="0,0,8,0" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <!-- Akceptacja rozkazu (wymaganie 3) -->
+                            <Border Background="#2E7D32" CornerRadius="4" Padding="10,5"
+                                    Margin="0,0,8,0"
+                                    Visibility="{Binding CzyZatwierdzony, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="✔  ZATWIERDZONY"
+                                           FontWeight="Bold" FontSize="12"
+                                           Foreground="White" />
+                            </Border>
+                            <Button x:Name="BtnZatwierdzRozkaz"
+                                    Content="✔  Zatwierdź rozkaz"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Background="#2E7D32"
+                                    Command="{Binding AkceptujRozkazCommand}"
+                                    Visibility="Collapsed"
+                                    Margin="0,0,8,0" />
+                            <Button x:Name="BtnOdblokujRozkaz"
+                                    Content="🔓  Odblokuj"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding OdblokujRozkazCommand}"
+                                    Visibility="Collapsed"
+                                    Margin="0,0,8,0" />
+                            <Button x:Name="BtnZapiszRozkaz"
+                                    Content="💾  Zapisz"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding ZapiszCommand}"
+                                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource InverseBoolConverter}}" />
+                        </StackPanel>
                         <Button Grid.Column="3"
                                 Content="📄  Eksport Word"
                                 Style="{StaticResource SecondaryButton}"
@@ -198,13 +243,34 @@
                                     <ComboBox Grid.Column="2"
                                               IsEditable="True"
                                               Style="{StaticResource EditableDarkComboBox}"
-                                              DisplayMemberPath="StopienINazwisko"
-                                              SelectedItem="{Binding WybranaOsoba, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedItem="{Binding WybranyItem, UpdateSourceTrigger=PropertyChanged}"
                                               Text="{Binding TekstOsoby, UpdateSourceTrigger=PropertyChanged}"
-                                              ItemsSource="{Binding DataContext.WszystkieOsoby,
-                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              ItemsSource="{Binding DostepneOsoby}"
                                               IsReadOnly="{Binding DataContext.IsReadOnly,
-                                                           RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                           RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <ComboBox.GroupStyle>
+                                            <GroupStyle>
+                                                <GroupStyle.HeaderTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontSize="10"
+                                                                   FontStyle="Italic"
+                                                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                                                   Margin="4,2,4,1" />
+                                                    </DataTemplate>
+                                                </GroupStyle.HeaderTemplate>
+                                            </GroupStyle>
+                                        </ComboBox.GroupStyle>
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
+                                                <TextBlock Text="{Binding StopienINazwisko}"
+                                                           ToolTip="{Binding TooltipText}"
+                                                           Foreground="{Binding KolorBoberaForeground}"
+                                                           FontWeight="{Binding CzySugerowana,
+                                                               Converter={StaticResource BoolToFontWeightConverter}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -273,13 +339,35 @@
                                                         <ComboBox Grid.Column="1"
                                                                   IsEditable="True"
                                                                   Style="{StaticResource EditableDarkComboBox}"
-                                                                  DisplayMemberPath="StopienINazwisko"
-                                                                  SelectedItem="{Binding WybranaOsoba, UpdateSourceTrigger=PropertyChanged}"
+                                                                  SelectedItem="{Binding WybranyItem, UpdateSourceTrigger=PropertyChanged}"
                                                                   Text="{Binding TekstOsoby, UpdateSourceTrigger=PropertyChanged}"
                                                                   ItemsSource="{Binding DostepneOsoby}"
                                                                   IsReadOnly="{Binding DataContext.IsReadOnly,
                                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                  FontSize="11" />
+                                                                  FontSize="11">
+                                                            <ComboBox.GroupStyle>
+                                                                <GroupStyle>
+                                                                    <GroupStyle.HeaderTemplate>
+                                                                        <DataTemplate>
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                       FontSize="9"
+                                                                                       FontStyle="Italic"
+                                                                                       Foreground="{StaticResource ForegroundMutedBrush}"
+                                                                                       Margin="4,1,4,1" />
+                                                                        </DataTemplate>
+                                                                    </GroupStyle.HeaderTemplate>
+                                                                </GroupStyle>
+                                                            </ComboBox.GroupStyle>
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate DataType="{x:Type vm:OsobaComboBoxItem}">
+                                                                    <TextBlock Text="{Binding StopienINazwisko}"
+                                                                               ToolTip="{Binding TooltipText}"
+                                                                               Foreground="{Binding KolorBoberaForeground}"
+                                                                               FontWeight="{Binding CzySugerowana,
+                                                                                   Converter={StaticResource BoolToFontWeightConverter}}" />
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

@@ -106,6 +106,16 @@ public sealed class RozkazRepository
         return rozkazId;
     }
 
+    public async Task UpdateStatusAsync(int id, StatusRozkazu status)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync();
+        await using var cmd = new OleDbCommand("UPDATE Rozkazy SET Status=? WHERE Id=?", conn);
+        cmd.Parameters.AddSmallInt((int)status);
+        cmd.Parameters.AddInteger(id);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     public async Task DeleteAsync(int id)
     {
         await using var conn = _factory.Create();

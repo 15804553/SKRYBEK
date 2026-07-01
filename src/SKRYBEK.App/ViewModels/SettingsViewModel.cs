@@ -16,45 +16,39 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _nrJrg = "4";
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private bool _isAdmin;
 
     public ObservableCollection<Samochod> Samochody { get; } = [];
-    public ObservableCollection<UserAccount> Uzytkownicy { get; } = [];
     public Array TypySamochodow { get; } = Enum.GetValues<TypSamochodu>();
 
-    [ObservableProperty] private Samochod? _wybranysamochod;
-    [ObservableProperty] private UserAccount? _wybranyUzytkownik;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WymaganiaPojazdu))]
+    private Samochod? _wybranysamochod;
+
+    public ObservableCollection<TypUprawnieniaItem> WymaganiaPojazdu { get; } = [];
 
     public bool CanEditAll => _session.CanEditAll;
 
-    /// <summary>Edycja listy pojazdów — dostępna dla zmian i DCA; wyłączona tylko dla PA (podgląd).</summary>
-    public bool CanEditPojazdy => !_session.IsReadOnly;
+    /// <summary>Edycja pojazdów i grup — tylko DCA JRG (wymaganie 1).</summary>
+    public bool CanEditPojazdy => _session.CanEditAll;
 
     public SettingsViewModel(SessionInfo session)
     {
         _session = session;
-        IsAdmin  = session.CanEditAll;
     }
+
 
     public async Task LoadAsync()
     {
         IsLoading = true;
         try
         {
-            SciezkaBoberBazy  = App.Services.BoberDb.DatabasePath;
-            SciezkaChomikBazy = App.Services.ChomikDb.DatabasePath;
-            NrJrg             = await App.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.NrJRG, "4");
+            SciezkaBoberBazy  = ServiceProvider.Services.BoberDb.DatabasePath;
+            SciezkaChomikBazy = ServiceProvider.Services.ChomikDb.DatabasePath;
+            NrJrg             = await ServiceProvider.Services.UstawieniaRepo.GetAsync(UstawieniaKlucze.NrJRG, "4");
 
             Samochody.Clear();
-            foreach (var s in await App.Services.SamochodyRepo.GetAllAsync())
+            foreach (var s in await ServiceProvider.Services.SamochodyRepo.GetAllAsync())
                 Samochody.Add(s);
-
-            if (IsAdmin)
-            {
-                Uzytkownicy.Clear();
-                foreach (var u in await App.Services.ChomikAuthRepo.GetAllAsync())
-                    Uzytkownicy.Add(u);
-            }
         }
         finally
         {
@@ -62,12 +56,36 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    partial void OnWybranysamochodChanged(Samochod? value) => _ = ZaladujWymaganiaPojazdAsync(value);
+
+    private async Task ZaladujWymaganiaPojazdAsync(Samochod? samochod)
+    {
+        WymaganiaPojazdu.Clear();
+        if (samochod is null || !CanEditPojazdy) return;
+
+        var wszystkieTypy = await ServiceProvider.Services.Personnel.GetTypyUprawnienAsync();
+        foreach (var (id, nazwa) in wszystkieTypy)
+        {
+            var item = new TypUprawnieniaItem(id, nazwa,
+                czyWybrane: samochod.WymaganeUprawnieniaIds.Contains(id));
+            item.PropertyChanged += (_, _) => AktualizujWymaganiaWModelu(samochod);
+            WymaganiaPojazdu.Add(item);
+        }
+    }
+
+    private void AktualizujWymaganiaWModelu(Samochod samochod)
+    {
+        samochod.WymaganeUprawnieniaIds.Clear();
+        foreach (var item in WymaganiaPojazdu.Where(i => i.CzyWybrane))
+            samochod.WymaganeUprawnieniaIds.Add(item.Id);
+    }
+
     [RelayCommand]
     private async Task ZapiszUstawieniaAsync()
     {
         try
         {
-            await App.Services.UstawieniaRepo.SetAsync(UstawieniaKlucze.NrJRG, NrJrg);
+            await ServiceProvider.Services.UstawieniaRepo.SetAsync(UstawieniaKlucze.NrJRG, NrJrg);
 
             StatusMessage = "Ustawienia zapisane. Ścieżki baz edytuj w DatabasePatch.txt i uruchom program ponownie.";
         }
@@ -80,14 +98,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task TestBoberConnectionAsync()
     {
-        var ok = await App.Services.BoberDb.TestConnectionAsync();
+        var ok = await ServiceProvider.Services.BoberDb.TestConnectionAsync();
         StatusMessage = ok ? "✔ Połączenie z bazą BOBER udane." : "✘ Brak połączenia z bazą BOBER.";
     }
 
     [RelayCommand]
     private async Task TestChomikConnectionAsync()
     {
-        var ok = await App.Services.ChomikDb.TestConnectionAsync();
+        var ok = await ServiceProvider.Services.ChomikDb.TestConnectionAsync();
         StatusMessage = ok ? "✔ Połączenie z bazą CHOMIK udane." : "✘ Brak połączenia z bazą CHOMIK.";
     }
 
@@ -104,14 +122,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             Kolejnosc     = Samochody.Count + 1,
             CzyAktywny    = true
         };
-        await App.Services.SamochodyRepo.UpsertAsync(s);
+        await ServiceProvider.Services.SamochodyRepo.UpsertAsync(s);
         await LoadAsync();
     }
 
     [RelayCommand]
     private async Task ZapiszSamochodAsync(Samochod s)
     {
-        await App.Services.SamochodyRepo.UpsertAsync(s);
+        await ServiceProvider.Services.SamochodyRepo.UpsertAsync(s);
         StatusMessage = $"Zapisano pojazd: {s.Nazwa}";
     }
 
@@ -122,45 +140,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             $"Czy usunąć pojazd '{s.Nazwa}'?",
             "Potwierdź usunięcie",
             SkrybekMessageKind.Warning)) return;
-        await App.Services.SamochodyRepo.DeleteAsync(s.Id);
+        await ServiceProvider.Services.SamochodyRepo.DeleteAsync(s.Id);
         await LoadAsync();
     }
-
-    // ── Użytkownicy ───────────────────────────────────────────────────────────
-    // Użytkownicy i hasła zarządzane są wyłącznie przez CHOMIK.
-
-    [RelayCommand]
-    private Task DodajUzytkownikaAsync()
-    {
-        ShowChomikInfo();
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    private Task ZapiszUzytkownikaAsync(UserAccount u)
-    {
-        ShowChomikInfo();
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    private Task UsunUzytkownikaAsync(UserAccount u)
-    {
-        ShowChomikInfo();
-        return Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    private Task ZmienHasloAsync(UserAccount u)
-    {
-        ShowChomikInfo();
-        return Task.CompletedTask;
-    }
-
-    private static void ShowChomikInfo() =>
-        SkrybekMessageBox.ShowInfo(
-            "Użytkownicy i hasła zarządzane są przez aplikację CHOMIK.\nWprowadź zmiany w CHOMIK i uruchom SKRYBEK ponownie.",
-            "Zarządzanie użytkownikami");
 
     // ── Backup ────────────────────────────────────────────────────────────────
 
@@ -169,7 +151,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            await App.Services.Backup.WykonajBackupAsync();
+            await ServiceProvider.Services.Backup.WykonajBackupAsync();
             StatusMessage = "Backup wykonany pomyślnie.";
         }
         catch (Exception ex)

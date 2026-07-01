@@ -42,14 +42,25 @@ public sealed partial class NieobecniGroupViewModel : ObservableObject
         Typ   = typ;
         Tytul = typ switch
         {
-            TypNieobecnosci.Urlop       => "URLOPY",
-            TypNieobecnosci.CzasWolny   => "CZAS WOLNY",
+            TypNieobecnosci.Urlop       => "URLOP",
+            TypNieobecnosci.CzasWolny   => "WOLNA SŁUŻBA",
             TypNieobecnosci.Chory       => "CHORZY",
-            TypNieobecnosci.Delegowany  => "DELEGOWANI",
-            TypNieobecnosci.DyzurDomowy => "DYŻUR DOMOWY",
+            TypNieobecnosci.Delegowany  => "DELEGACJA",
+            TypNieobecnosci.DyzurDomowy => "DYŻUR",
             _                           => typ.ToString()
         };
         foreach (var n in initial)
+            Items.Add(new NieobecnyViewModel(n));
+    }
+
+    /// <summary>
+    /// Zastępuje zawartość listy danymi pobranymi z BOBER.
+    /// Zachowuje wpisy dodane ręcznie przez użytkownika (bez FunkcjonariuszId z BOBER).
+    /// </summary>
+    public void ZaladujZBobera(IEnumerable<NieobecnyWSluzbie> nieobecni)
+    {
+        Items.Clear();
+        foreach (var n in nieobecni)
             Items.Add(new NieobecnyViewModel(n));
     }
 

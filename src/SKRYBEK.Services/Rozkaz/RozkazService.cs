@@ -74,6 +74,12 @@ public sealed class RozkazService
         return id;
     }
 
+    public async Task UpdateStatusAsync(int id, StatusRozkazu status)
+    {
+        await _repo.UpdateStatusAsync(id, status);
+        SkrybekLog.Info($"Status rozkazu Id={id} zmieniony na {status}");
+    }
+
     public async Task UsunAsync(int id)
     {
         await _repo.DeleteAsync(id);
@@ -131,7 +137,7 @@ public sealed class RozkazService
         var duplikaty = rozkaz.PodzialBojowy
             .Where(p => p.FunkcjonariuszId.HasValue && podstawoweIds.Contains(p.SamochodId))
             .GroupBy(p => p.FunkcjonariuszId!.Value)
-            .Where(g => g.Select(p => p.SamochodId).Distinct().Count() > 1)
+            .Where(g => g.Count() > 1)
             .ToList();
 
         if (duplikaty.Count > 0)

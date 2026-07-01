@@ -12,6 +12,11 @@ public partial class App : Application
 {
     public static AppServices Services { get; private set; } = null!;
 
+    static App()
+    {
+        // ServiceProvider jest ustawiane w OnStartup — zachowana kompatybilność wsteczna.
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -26,6 +31,7 @@ public partial class App : Application
         try
         {
             Services = await AppServices.CreateAsync(dbPath);
+            ServiceProvider.Services = Services;
             await Services.Backup.SprawdzIWykonajBackupAsync();
         }
         catch (Exception ex)

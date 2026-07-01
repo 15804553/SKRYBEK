@@ -10,6 +10,8 @@ public sealed partial class MainViewModel : ObservableObject
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
+    [NotifyPropertyChangedFor(nameof(CanUsunRozkaz))]
+    [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
     private SessionInfo? _session;
     [ObservableProperty] private List<RozkazDzienny> _rozkazy = [];
     [ObservableProperty] private RozkazDzienny? _wybranyRozkaz;
@@ -20,8 +22,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool CanEdit => Session is not null && !Session.IsReadOnly;
 
+    /// <summary>Usuwanie rozkazu — tylko DCA JRG (wymaganie 4).</summary>
+    public bool CanUsunRozkaz => Session is not null && Session.CanEditAll;
+
+    /// <summary>Dostęp do ustawień — tylko DCA JRG.</summary>
+    public bool CanOpenSettings => Session?.CanEditAll == true;
+
     public MainViewModel(SessionInfo session)
     {
+        session.NormalizePaFlags();
         _session = session;
     }
 
@@ -30,7 +39,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsLoading = true;
         try
         {
-            Rozkazy = await App.Services.Rozkaz.GetByRokAsync(AktualnyRok);
+            Rozkazy = await ServiceProvider.Services.Rozkaz.GetByRokAsync(AktualnyRok);
         }
         finally
         {
@@ -49,19 +58,23 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var nrZmiany = Session.NumerZmiany > 0 ? Session.NumerZmiany : 1;
             var dzisiaj  = DateOnly.FromDateTime(DateTime.Today);
-            var data     = await App.Services.Personnel.GetNastepnyDzienSluzbyPoAsync(nrZmiany, dzisiaj);
+            var data     = await ServiceProvider.Services.Personnel.GetNastepnyDzienSluzbyPoAsync(nrZmiany, dzisiaj);
 
             SkrybekLog.Info(
                 $"Nowy rozkaz: zmiana {nrZmiany}, dzisiaj {dzisiaj:yyyy-MM-dd}, data rozkazu {data:yyyy-MM-dd}");
 
-            var rozkaz    = await App.Services.Rozkaz.NowyRozkazAsync(data, nrZmiany);
-            var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
-            var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
-            var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
+            var rozkaz    = await ServiceProvider.Services.Rozkaz.NowyRozkazAsync(data, nrZmiany);
+            var samochody = await ServiceProvider.Services.SamochodyRepo.GetAktywneAsync();
+            var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
+            var personel  = await ServiceProvider.Services.Personnel.GetDostepniAsync(data, nrZmiany);
+            var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
+
+            // Wstępne wypełnienie nieobecnych z BOBER (wymaganie 6)
+            rozkaz.Nieobecni = await ServiceProvider.Services.Personnel.GetNieobecniWDniuAsync(data, nrZmiany, wszyscy);
 
             WybranyRozkaz = null;
             EditorVm = null;
-            EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, nrJrg, Session, isNew: true);
+            EditorVm = new RozkazEditorViewModel(rozkaz, samochody, personel, wszyscy, nrJrg, Session, isNew: true);
             EditorVm.Saved += OnRozkazSaved;
 
             StatusMessage = personel.Count == 0
@@ -91,16 +104,17 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = string.Empty;
         try
         {
-            var pelny = await App.Services.Rozkaz.GetByIdAsync(rozkaz.Id);
+            var pelny = await ServiceProvider.Services.Rozkaz.GetByIdAsync(rozkaz.Id);
             if (pelny is null) return;
 
-            var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
+            var samochody = await ServiceProvider.Services.SamochodyRepo.GetAktywneAsync();
             var nrZmiany  = Session.CanEditAll ? pelny.ZmianaId : Session.NumerZmiany;
-            var personel  = await App.Services.Personnel.GetDostepniAsync(pelny.Data, nrZmiany);
-            var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
+            var personel  = await ServiceProvider.Services.Personnel.GetDostepniAsync(pelny.Data, nrZmiany);
+            var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
+            var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(Core.Models.UstawieniaKlucze.NrJRG, "4");
 
             WybranyRozkaz = pelny;
-            EditorVm = new RozkazEditorViewModel(pelny, samochody, personel, nrJrg, Session, isNew: false);
+            EditorVm = new RozkazEditorViewModel(pelny, samochody, personel, wszyscy, nrJrg, Session, isNew: false);
             EditorVm.Saved += OnRozkazSaved;
         }
         catch (Exception ex)
@@ -120,7 +134,14 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task UsunRozkazAsync(RozkazDzienny rozkaz)
     {
-        await App.Services.Rozkaz.UsunAsync(rozkaz.Id);
+        // Wymaganie 4: usuwanie tylko DCA JRG
+        if (Session is null || !Session.CanEditAll)
+        {
+            SkrybekMessageBox.ShowWarning("Tylko DCA JRG może usunąć rozkaz.", "Brak uprawnień");
+            return;
+        }
+
+        await ServiceProvider.Services.Rozkaz.UsunAsync(rozkaz.Id);
         await LoadAsync();
         if (WybranyRozkaz?.Id == rozkaz.Id)
         {
@@ -154,12 +175,13 @@ public sealed partial class MainViewModel : ObservableObject
             var nrZmiany = WybranyRozkaz?.ZmianaId
                            ?? (Session.NumerZmiany > 0 ? Session.NumerZmiany : 1);
 
-            var samochody = await App.Services.SamochodyRepo.GetAktywneAsync();
-            var personel  = await App.Services.Personnel.GetDostepniAsync(data, nrZmiany);
-            var nrJrg     = await App.Services.UstawieniaRepo.GetAsync(
+            var samochody = await ServiceProvider.Services.SamochodyRepo.GetAktywneAsync();
+            var personel  = await ServiceProvider.Services.Personnel.GetDostepniAsync(data, nrZmiany);
+            var wszyscy   = await ServiceProvider.Services.Personnel.GetWszyscyZmianaAsync(nrZmiany);
+            var nrJrg     = await ServiceProvider.Services.UstawieniaRepo.GetAsync(
                 Core.Models.UstawieniaKlucze.NrJRG, "4");
 
-            EditorVm.OdswiezPoZamknieciuUstawien(samochody, personel, nrJrg);
+            EditorVm.OdswiezPoZamknieciuUstawien(samochody, personel, wszyscy, nrJrg);
             StatusMessage = $"Odświeżono widok — dostępnych: {personel.Count}";
         }
         catch (Exception ex)
